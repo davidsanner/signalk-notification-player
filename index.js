@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-
-//const Bacon = require('baconjs');
 const _ = require('lodash')
 const path = require('path')
 const child_process = require('child_process')
@@ -97,7 +95,7 @@ module.exports = function(app) {
         }
       })
     })
-    //app.debug("PENDING "+last_states.size)
+    //app.debug("Active: "+last_states.size)
     if ( last_states.size === 0 && playing_sound) { 
       stop_playing_continuous()
     }
