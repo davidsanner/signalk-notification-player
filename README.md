@@ -1,8 +1,8 @@
 Signal K plugin for audio notifications
 =================================
 
-This plugin plays user configurable sounds when a Signal K notification enters alarm/emergency/alarm/warn/notice state.
-Audio playback is configurable to repeat or only play a single notification sound.
+This plugin plays user configurable sounds when a Signal K notification enters emergency/alarm/warn/notice state.
+Audio playback is configurable per notification type to repeat or only play a single notification sound.
 
 
 ## Dependencies
