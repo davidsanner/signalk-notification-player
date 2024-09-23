@@ -20,7 +20,7 @@ const child_process = require('child_process')
 module.exports = function(app) {
   var plugin = {}
   plugin.id = "signalk-notification-player"
-  plugin.name = "SignalK Notification Player"
+  plugin.name = "Notification Player"
   plugin.description = "Plugin that plays notification sounds"
   
   var unsubscribes = []
@@ -194,7 +194,7 @@ module.exports = function(app) {
     let defaultAudioPlayer = 'mpg321'
 
     let schema = {
-      title: "Alarm Player",
+      title: "Notification Player",
           description: "Select response for each notification type:",
       type: "object",
       required: [
