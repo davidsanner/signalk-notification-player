@@ -29,6 +29,7 @@ module.exports = function(app) {
   var last_states = new Map()
   var enableNotificationTypes = []
   var playPID
+  var customAudioFile
 
   plugin.start = function(props) {
     plugin_props = props
@@ -65,12 +66,26 @@ module.exports = function(app) {
           if( typeof value.value.method != 'undefined'
             && value.value.method.indexOf('sound') != -1 )
           {
-              continuous = false
-              notice = false
-              Object.keys(enableNotificationTypes).forEach(function(ntype) {
+              let continuous = false
+              let notice = false
+              let custom_path = false
+
+              plugin_props.mappings.forEach(function(notification) {   // check for custom notice
+                if( value.path == notification.path ){
+                  custom_path = true
+                  if( playing_sound != true && notification.alarmAudioFile ) customAudioFile = notification.alarmAudioFile
+                  if(notification.alarmType == 'continuous') continuous=true
+                  else if(notification.alarmType == 'single notice' ) notice=true
+                }
+              });
+
+              if(!custom_path) {
+                if( playing_sound != true ) customAudioFile = undefined
+                Object.keys(enableNotificationTypes).forEach(function(ntype) {
                   if ([ntype].indexOf(value.value.state) != -1 && enableNotificationTypes[ntype] == 'continuous') continuous=true
                   if ([ntype].indexOf(value.value.state) != -1 && enableNotificationTypes[ntype] == 'single notice') notice=true
-              }); 
+                }); 
+              }
 
               if ( playing_sound == false && notice )
               {
@@ -105,7 +120,7 @@ module.exports = function(app) {
   {
     app.debug('stop playing')
     playing_sound = false
-    if (playPID) process.kill(playPID)
+    if (typeof playPID === 'number') process.kill(playPID)
     if ( plugin_props.postCommand && plugin_props.postCommand.length > 0 ) {
       const { exec } = require('node:child_process')
       app.debug("post command: %s", plugin_props.postCommand)
@@ -128,7 +143,11 @@ module.exports = function(app) {
     let command = plugin_props.alarmAudioPlayer
     app.debug("sound_player: " + command)
 
-    let sound_file = plugin_props.alarmAudioFile
+    if ( customAudioFile ) 
+      sound_file = customAudioFile
+    else
+      sound_file = plugin_props.alarmAudioFile
+
     if ( sound_file && sound_file.charAt(0) != '/' )
     {
       sound_file = path.join(__dirname, sound_file)
@@ -168,9 +187,12 @@ module.exports = function(app) {
     app.debug("play_notice")
 
     let command = plugin_props.alarmAudioPlayer
-    app.debug("sound_player: " + command)
 
-    let sound_file = plugin_props.warnAudioFile
+    if ( customAudioFile ) 
+      sound_file = customAudioFile
+    else
+      sound_file = plugin_props.warnAudioFile
+
     if ( sound_file && sound_file.charAt(0) != '/' )
     {
       sound_file = path.join(__dirname, sound_file)
@@ -195,7 +217,7 @@ module.exports = function(app) {
 
     let schema = {
       title: "Notification Player",
-          description: "Select response for each notification type:",
+      description: "Select response for each notification type:",
       type: "object",
       required: [
         "alarmAudioFile"
@@ -256,8 +278,33 @@ module.exports = function(app) {
           title: "Audio Player Arguments",
           description: "Arguments to add to the audio player command",
           type: "string"
+        },
+        mappings: {
+        type: 'array',
+        title: 'Custom Action For Specific Notifications',
+        items: {
+            type: 'object',
+            required: ['path', 'alarmType'],
+            properties: {
+              path: {
+                type: 'string',
+                title: 'Notification Path'
+              },
+              alarmType: {
+                type: "string",
+                "enum": ["continuous", "single notice", "mute"],
+                title: "Notification Type",
+                default: "continuous"
+              },
+              alarmAudioFile: {
+                type: "string",
+                title: "Path to audio file for continuous audio notification (defaults to alarm type)"
+              }
+            }
+          }
         }
       }
+
     }
     return schema
   }
