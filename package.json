@@ -1,10 +1,11 @@
 {
   "name": "signalk-notification-player",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Plays audio files when notifications enter emergency/alarm/warn/notice state",
   "main": "index.js",
   "keywords": [
     "signalk-node-server-plugin",
+    "signalk-category-notifications",
     "notifications"
   ],
   "homepage": "https://github.com/davidsanner/signalk-notification-player",
