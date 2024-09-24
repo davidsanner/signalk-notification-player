@@ -71,7 +71,7 @@ module.exports = function(app) {
               let custom_path = false
 
               plugin_props.mappings.forEach(function(notification) {   // check for custom notice
-                if( value.path == notification.path ){
+                if( value.path == notification.path && value.value.state == notification.state){
                   custom_path = true
                   if( playing_sound != true && notification.alarmAudioFile ) customAudioFile = notification.alarmAudioFile
                   if(notification.alarmType == 'continuous') continuous=true
@@ -284,17 +284,23 @@ module.exports = function(app) {
         title: 'Custom Action For Specific Notifications',
         items: {
             type: 'object',
-            required: ['path', 'alarmType'],
+            required: ['path', 'alarmType','state'],
             properties: {
               path: {
                 type: 'string',
                 title: 'Notification Path'
               },
+              state: {
+                type: "string",
+                "enum": ["emergency", "alarm", "warn", "alert", "normal"],
+                title: 'Notification State',
+                default: "emergency"
+              },
               alarmType: {
                 type: "string",
                 "enum": ["continuous", "single notice", "mute"],
                 title: "Notification Type",
-                default: "continuous"
+                default: "single notice"
               },
               alarmAudioFile: {
                 type: "string",
