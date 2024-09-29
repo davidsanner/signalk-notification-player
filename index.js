@@ -47,7 +47,7 @@ module.exports = function(app) {
       process.env.PATH.replace(/["]+/g, '').split(path.delimiter).filter(Boolean).forEach((element) => {if(fs.existsSync(element+'/festival')) hasFestival=true})
       if (!hasFestival) app.error('Error: please install festival package')
     }
-    if(plugin_props.customMap) plugin_props.customMap.forEach((m) => { if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom })
+    if(plugin_props.mappings) plugin_props.mappings.forEach((m) => { if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom })
     subscribeToAlarms()
   }
 
@@ -80,7 +80,7 @@ module.exports = function(app) {
               let audioFile = undefined
 
 
-              if(plugin_props.customMap) plugin_props.customMap.forEach(function(notification) {   // check for custom notice
+              if(plugin_props.mappings) plugin_props.mappings.forEach(function(notification) {   // check for custom notice
                 if( value.path == notification.path && value.value.state == notification.state){
                   custom_path = true
                   if(notification.alarmAudioFile ) audioFile = notification.alarmAudioFile
@@ -346,7 +346,7 @@ module.exports = function(app) {
           description: 'Arguments to add to the audio player command',
           type: 'string'
         },
-        customMap: {
+        mappings: {
           type: 'array',
           title: 'Custom Action For Specific Notifications',
           items: {
