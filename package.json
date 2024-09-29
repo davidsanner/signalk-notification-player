@@ -1,7 +1,7 @@
 {
   "name": "signalk-notification-player",
-  "version": "0.6.0",
-  "description": "Plays audio files when notifications enter emergency/alarm/warn/notice state",
+  "version": "1.0.0",
+  "description": "Customizable audio player and voice messages for active notifications",
   "main": "index.js",
   "keywords": [
     "signalk-node-server-plugin",
@@ -23,6 +23,8 @@
   },
   "signalk-plugin-enabled-by-default": true,
   "dependencies": {
-    "lodash": "^4.17.4"
+    "lodash": "^4.17.4",
+    "fs": "^0.0.1-security",
+    "say": "^0.16.0"
   }
 }
