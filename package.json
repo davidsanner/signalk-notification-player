@@ -1,7 +1,7 @@
 {
   "name": "signalk-notification-player",
   "version": "1.0.0",
-  "description": "Customizable audio player and voice messages for active notifications",
+  "description": "Customizable audio player and text to speech for active notifications",
   "main": "index.js",
   "keywords": [
     "signalk-node-server-plugin",
