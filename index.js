@@ -339,7 +339,7 @@ module.exports = function(app) {
           description: 'Select command line audio player',
           type: 'string',
           default: defaultAudioPlayer,
-          'enum': ['afplay', 'omxplayer', 'mpg321']
+          'enum': ['afplay', 'omxplayer', 'mpg321', 'mpg123']
         },
         alarmAudioPlayerArguments: {
           title: 'Audio Player Arguments',
