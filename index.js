@@ -119,8 +119,9 @@ module.exports = function(app) {
                 if ( notice ){ args.mode = 'notice' }
                 else if ( continuous ) { args.mode = 'continuous' }
 
-                if(!last_states.get(value.path) || !last_states.get(value.path).state || last_states.get(value.path).state != args.state){
-                        // only add if new path entry or if changing existing path's state (eg. alarm to alert)
+                if(!last_states.get(value.path) || !last_states.get(value.path).state || 
+                       last_states.get(value.path).state != args.state || last_states.get(value.path).message != args.message){
+                        // only add if new path entry or if changing existing path's state (eg. alarm to alert) OR if messages changes
                   last_states.set(value.path, args)
                   app.debug('ADD2Q:'+args.path, args.mode, 'qSize:'+last_states.size)
                   if ( playing_sound == false ) {
@@ -175,9 +176,9 @@ module.exports = function(app) {
         app.debug('pre command: %s', plugin_props.preCommand)
         exec(plugin_props.preCommand)
       }
+      playing_sound = true
     }
 
-    playing_sound = true
     if ( (soundEvent.message && soundEvent.played == 2) || (!soundEvent.audioFile && soundEvent.played == 1)){
       if( process.platform === "linux" && !hasFestival ) {
         app.debug('skipping saying:'+soundEvent.message,'mode:'+soundEvent.mode,"played:"+soundEvent.played)
@@ -247,8 +248,8 @@ module.exports = function(app) {
               play_event(Array.from(last_states)[queueIndex][1])
             }
             else {
-                  stop_playing_queue()
-                  app.debug("Queue Empty, waiting...")
+              if(playing_sound) stop_playing_queue()
+              app.debug("Queue Empty, waiting...")
             }
           }
         }
