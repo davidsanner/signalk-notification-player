@@ -30,18 +30,17 @@ module.exports = function(app) {
   var playing_sound = false
   var plugin_props
   var last_states = new Map()
-  var enableNotificationTypes = []
   var playPID
   var queueIndex = 0
   var hasFestival = false
+  var notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
+  var notificationSounds = {'emergency': notificationFiles[0], 'alarm': notificationFiles[1], 'warn': notificationFiles[2], 'alert': notificationFiles[3]}
+  var enableNotificationTypes = {'emergency': 'continuous', 'alarm': 'continuous', 'warn': 'single notice', 'alert': 'single notice'}
+  var notificationPrePost = {'emergency': true, 'alarm': true, 'warn': false, 'alert': false}
   const soundEvent = { path: '', state: '', audioFile: '', message: '', mode: '', played: 0, numNotifications: 0}
 
   plugin.start = function(props) {
     plugin_props = props
-    enableNotificationTypes['emergency'] = plugin_props.enableEmergencies
-    enableNotificationTypes['alarm'] = plugin_props.enableAlarms
-    enableNotificationTypes['warn'] = plugin_props.enableWarnings
-    enableNotificationTypes['alert'] = plugin_props.enableAlerts
 
     if( process.platform === 'linux' ) { // quick check if festival installed for linux
       process.env.PATH.replace(/["]+/g, '').split(path.delimiter).filter(Boolean).forEach((element) => {if(fs.existsSync(element+'/festival')) hasFestival=true})
@@ -77,8 +76,7 @@ module.exports = function(app) {
               let notice = false
               let custom_path = false
               let noPlay = false
-              let audioFile = undefined
-
+              let audioFile = notificationSounds[value.value.state]
 
               if(plugin_props.mappings) plugin_props.mappings.forEach(function(notification) {   // check for custom notice
                 if( value.path == notification.path && value.value.state == notification.state){
@@ -91,15 +89,10 @@ module.exports = function(app) {
               });
 
               if(!custom_path) {
-                Object.keys(enableNotificationTypes).forEach(function(ntype) {
-                  if ([ntype].indexOf(value.value.state) != -1 && enableNotificationTypes[ntype] == 'continuous') {
-                    continuous=true
-                    audioFile = plugin_props.alarmAudioFile
-                  } if ([ntype].indexOf(value.value.state) != -1 && enableNotificationTypes[ntype] == 'single notice') {
-                    notice=true
-                    audioFile = plugin_props.warnAudioFile
-                  }
-                }); 
+                if( enableNotificationTypes[value.value.state] == 'continuous' )
+                  continuous=true
+                else if ( enableNotificationTypes[value.value.state] == 'single notice' )
+                  notice=true
               }
 
               if ( notice || continuous )
@@ -169,8 +162,10 @@ module.exports = function(app) {
   {
     soundEvent.played++
     //app.debug("SOUND EVENT:",soundEvent)
+    //soundEvent - path state audioFile message mode played numNotifications
 
-    if ( soundEvent.mode == 'continuous') {
+    if ( notificationPrePost[soundEvent.state] ){
+    //if ( soundEvent.mode == 'continuous') {
       if (  playing_sound != true && plugin_props.preCommand && plugin_props.preCommand.length > 0 ) { 
         const { exec } = require('node:child_process')
         app.debug('pre command: %s', plugin_props.preCommand)
@@ -248,12 +243,14 @@ module.exports = function(app) {
               play_event(Array.from(last_states)[queueIndex][1])
             }
             else {
+              //muteMethod( audioEvent.path, "" )
               if(playing_sound) stop_playing_queue()
               app.debug("Queue Empty, waiting...")
             }
           }
         }
-        else {  // event removed in got_delta
+        else { 
+          //muteMethod( audioEvent.path, "" )
           if(playing_sound) stop_playing_queue()
           app.debug("Queue Empty, waiting....")
         }
@@ -267,12 +264,10 @@ module.exports = function(app) {
     let defaultAudioPlayer = 'mpg321'
     if( process.platform === 'darwin' ) defaultAudioPlayer = 'afplay'
     let notificationTypes = ['continuous', 'single notice', 'mute']
-    let notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3']
 
     let schema = {
-      title: 'Notification Player',
-      description: 'Default Response for Each (4) Notification Type:',
       type: 'object',
+      description: 'Default Playback Method for Each (Emergency/Alarm/Warn/Alert) Notification Type:',
       required: [
         'enableEmergencies',
         'enableAlarms',
@@ -283,56 +278,103 @@ module.exports = function(app) {
         enableEmergencies: {
           type: 'string',
           'enum': notificationTypes,
-          title: 'Emergency Notification Type',
+          title: ' # Emergency - Playback Method #',
           default: 'continuous'
         },
+        emergencyAudioFile: {
+          type: 'string',
+          'enum': notificationFiles,
+          title: 'Emergency - Notification Sound',
+          default: notificationSounds.emergency
+        },
+        emergencyAudioFileCustom: {
+          type: 'string',
+          title: 'Emergency - Custom Notification Sound',
+          description: 'Full Path to Sound File (overrides above setting)'
+        },
+        prePostEmergency: {
+          type: 'boolean',
+          title: 'Run Custom Pre/Post Commands for Emergency Notifications',
+          default: true
+        },
+
         enableAlarms: {
           type: 'string',
           'enum': notificationTypes,
-          title: 'Alarm Notification Type',
+          title: ' # Alarm - Playback Method #',
           default: 'continuous'
-        },
-        enableWarnings: {
-          type: 'string',
-          'enum': notificationTypes,
-          title: 'Warning Notification Type',
-          default: 'single notice'
-        },
-        enableAlerts: {
-          type: 'string',
-          'enum': notificationTypes,
-          title: 'Alert Notification Type',
-          default: 'single notice'
         },
         alarmAudioFile: {
           type: 'string',
           'enum': notificationFiles,
-          title: 'Notification sound for continuous audio notification',
-          default: notificationFiles[0]
+          title: 'Alarm - Notification Sound',
+          default: notificationSounds.alarm
         },
         alarmAudioFileCustom: {
           type: 'string',
-          title: 'Custom notification for continuous - full path to sound file (overrides above setting)'
+          title: 'Alarm - Custom Notification Sound',
+          description: 'Full Path to Sound File (overrides above setting)'
+        },
+        prePostAlarm: {
+          type: 'boolean',
+          title: 'Run Custom Pre/Post Commands for Alarm Notifications',
+          default: true
+        },
+
+        enableWarnings: {
+          type: 'string',
+          'enum': notificationTypes,
+          title: ' # Warning - Playback Method #',
+          default: 'single notice'
         },
         warnAudioFile: {
           type: 'string',
           'enum': notificationFiles,
-          title: 'Notification sound for single notice audio notification',
-          default: notificationFiles[1]
+          title: 'Warn - Notification Sound',
+          default: notificationSounds.warn
         },
         warnAudioFileCustom: {
           type: 'string',
-          title: 'Custom notification for single notice',
+          title: 'Warn - Custom Notification Sound',
           description: 'Full Path to Sound File (overrides above setting)'
         },
+        prePostWarn: {
+          type: 'boolean',
+          title: 'Run Custom Pre/Post Commands for Warn Notifications',
+          default: false
+        },
+
+        enableAlerts: {
+          type: 'string',
+          'enum': notificationTypes,
+          title: ' # Alert - Playback Method #',
+          default: 'single notice'
+        },
+        alertAudioFile: {
+          type: 'string',
+          'enum': notificationFiles,
+          title: 'Alert - Notification Sound',
+          default: notificationSounds.alert
+        },
+        alertAudioFileCustom: {
+          type: 'string',
+          title: 'Alert - Custom Notification Sound',
+          description: 'Full Path to Sound File (overrides above setting)'
+        },
+        prePostAlert: {
+          type: 'boolean',
+          title: 'Run Custom Pre/Post Commands for Alert Notifications',
+          default: false
+        },
+
         preCommand: {
-          title: 'Command before playing alarm/emergency',
-          description: 'optional command to run before playing alarm or emergency',
+          title: 'Custom Command Before Playing Notification',
+          description: 'optional command to run before playing/speaking',
           type: 'string'
         },
         postCommand: {
-          title: 'Command after playing alarm/emergency',
-          description: 'optional command to run after alarm or emergency is cleared',
+          title: 'Custom Command After Playing Notification',
+          description: 'optional command to run after playing/speaking',
           type: 'string'
         },
         alarmAudioPlayer: {
@@ -352,7 +394,7 @@ module.exports = function(app) {
           title: 'Custom Action For Specific Notifications',
           items: {
             type: 'object',
-            required: ['path', 'alarmType','state'],
+            required: ['path'],
             properties: {
               path: {
                 type: 'string',
@@ -360,26 +402,33 @@ module.exports = function(app) {
               },
               state: {
                 type: 'string',
-                'enum': ['emergency', 'alarm', 'warn', 'alert', 'normal'],
+                'enum': ['emergency', 'alarm', 'warn', 'alert', 'normal', 'nominal'],
                 title: 'Notification State',
-                description: '(Notification Path can be assigned a custom action for each Notification State',
+                description: '(Notification Path can be assigned a custom action for each Notification State)',
                 default: 'emergency'
               },
               alarmType: {
                 type: 'string',
                 'enum': notificationTypes,
-                title: 'Notification Type',
+                title: 'Playback Method',
                 default: 'single notice'
               },
+/*              methodMute: {
+                type: 'boolean',
+                title: 'For - Single Notice - Notification Types Only - Silences Notification Method after Playing Once',
+                description: 'Clears Notification Sound Method (eg. silent/mute) so other apps don\'t repeat',
+                default: false
+              },
+*/
               alarmAudioFile: {
                 type: 'string',
                 'enum': notificationFiles,
-                title: 'Notification Sound',
-                default: notificationFiles[0]
+                title: 'Playback Sound',
+                default: notificationSounds.emergency
               },
               alarmAudioFileCustom: {
                 type: 'string',
-                title: 'Custom Notification Sound',
+                title: 'Custom Playback Sound',
                 description: 'Full Path to Sound File (overrides above setting)'
               },
               noPlay: {
@@ -392,12 +441,51 @@ module.exports = function(app) {
           }
         }
       }
-
     }
-    if(typeof alarmAudioFileCustom !== 'undefined') alarmAudioFile = alarmAudioFileCustom
-    if(typeof warnAudioFileCustom !== 'undefined') warnAudioFile = warnAudioFileCustom
+    //if(typeof alarmAudioFileCustom !== 'undefined') alarmAudioFile = alarmAudioFileCustom
+    //if(typeof warnAudioFileCustom !== 'undefined') warnAudioFile = warnAudioFileCustom
+
+    if(typeof plugin_props !== 'undefined' ) {
+      enableNotificationTypes.emergency = plugin_props.enableEmergencies
+      enableNotificationTypes.alarm = plugin_props.enableAlarms
+      enableNotificationTypes.warn = plugin_props.enableWarnings
+      enableNotificationTypes.alert = plugin_props.enableAlerts
+  
+      notificationPrePost.emergency = plugin_props.prePostEmergency
+      notificationPrePost.alarm = plugin_props.prePostAlarm
+      notificationPrePost.warn = plugin_props.prePostWarn
+      notificationPrePost.alert = plugin_props.prePostAlert
+  
+      if(plugin_props.emergencyAudioFileCustom) notificationSounds.emergency = plugin_props.emergencyAudioFileCustom
+      else if (plugin_props.emergencyAudioFile) notificationSounds.emergency = plugin_props.emergencyAudioFile
+      if(plugin_props.alarmAudioFileCustom) notificationSounds.alarm = plugin_props.alarmAudioFileCustom
+      else if (plugin_props.alarmAudioFile) notificationSounds.alarm = plugin_props.alarmAudioFile
+      if(plugin_props.warnAudioFileCustom) notificationSounds.warn = plugin_props.warnAudioFileCustom
+      else if (plugin_props.warnAudioFile) notificationSounds.warn = plugin_props.warnAudioFile
+      if(plugin_props.alertAudioFileCustom) notificationSounds.alert = plugin_props.alertAudioFileCustom
+      else if (plugin_props.alertAudioFile) notificationSounds.alert = plugin_props.alertAudioFile
+    }
+
     return schema
   }
+
+/*
+  function muteMethod( path, value ) {
+    app.handleMessage('self.notificationhandler', {
+      updates: [
+        {
+          values: [
+            {
+              path: "notifications.electrical.batteries.bmv.relay",
+              method: []
+            }
+          ],
+          $source: 'self.notificationhandler'
+        }
+      ]
+    })
+  }
+*/
 
   function subscribeToAlarms()
   {
