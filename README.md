@@ -32,9 +32,8 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
-version 1.7:
-  Option to limit notification rate when bouncing in/out of a zone  (eg. tank or depth zone)
-version 1.5.x:
-  added custom features for each path, new mellow tritone sound
-  allow active notification to update if message changes
+- version 1.7:  
+Option to limit notification rate when bouncing in/out of a zone (eg. tank or depth zone)
+- version 1.5.x:  
+Added custom features for each path, new mellow tritone sound, allow active notification to update if message changes
 
