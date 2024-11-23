@@ -25,22 +25,25 @@ module.exports = function(app) {
   plugin.name = 'Notification Player'
   plugin.description = 'Plugin that plays notification sounds/speech'
  
-  
   var unsubscribes = []
   var playing_sound = false
   var plugin_props
   var last_states = new Map()
+  var alertLog = new Map()
   var playPID
   var queueIndex = 0
   var hasFestival = false
+  var repeatGapDefault = 0  // no repeat rate control
   var notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
   var notificationSounds = {'emergency': notificationFiles[0], 'alarm': notificationFiles[1], 'warn': notificationFiles[2], 'alert': notificationFiles[3]}
   var enableNotificationTypes = {'emergency': 'continuous', 'alarm': 'continuous', 'warn': 'single notice', 'alert': 'single notice'}
   var notificationPrePost = {'emergency': true, 'alarm': true, 'warn': false, 'alert': false}
   const soundEvent = { path: '', state: '', audioFile: '', message: '', mode: '', played: 0, numNotifications: 0}
+  const soundEventLog = { message: '', timestamp: 0}
 
   plugin.start = function(props) {
     plugin_props = props
+    if ( !plugin_props.repeatGap ) plugin_props.repeatGap = repeatGapDefault
 
     if( process.platform === 'linux' ) { // quick check if festival installed for linux
       process.env.PATH.replace(/["]+/g, '').split(path.delimiter).filter(Boolean).forEach((element) => {if(fs.existsSync(element+'/festival')) hasFestival=true})
@@ -55,8 +58,7 @@ module.exports = function(app) {
     unsubscribes = []
   }
 
-  function subscription_error(err)
-  {
+  function subscription_error(err) {
     app.error('error: ' + err)
   }
 
@@ -77,6 +79,7 @@ module.exports = function(app) {
               let custom_path = false
               let noPlay = false
               let audioFile = notificationSounds[value.value.state]
+              let repeatGap = plugin_props.repeatGap
 
               if(plugin_props.mappings) plugin_props.mappings.forEach(function(notification) {   // check for custom notice
                 if( value.path == notification.path && value.value.state == notification.state){
@@ -85,6 +88,7 @@ module.exports = function(app) {
                   if(notification.alarmType == 'continuous') continuous=true
                   else if(notification.alarmType == 'single notice' ) notice=true
                   if(notification.noPlay == true) noPlay=true
+                  if(notification.repeatGap) repeatGap=notification.repeatGap
                 }
               });
 
@@ -97,6 +101,7 @@ module.exports = function(app) {
 
               if ( notice || continuous )
               {
+                let eventTimeStamp = new Date(update.timestamp).getTime()
                 let args = Object.create(soundEvent)
                 args.audioFile = audioFile
                 args.path=value.path
@@ -112,10 +117,13 @@ module.exports = function(app) {
                 if ( notice ){ args.mode = 'notice' }
                 else if ( continuous ) { args.mode = 'continuous' }
 
-                if(!last_states.get(value.path) || !last_states.get(value.path).state || 
-                       last_states.get(value.path).state != args.state || last_states.get(value.path).message != args.message){
-                        // only add if new path entry or if changing existing path's state (eg. alarm to alert) OR if messages changes
+       // only add if new path entry or if changing existing path's state (eg. alarm to alert) OR if messages changes && not bouncing/recent
+                if( (!last_states.get(value.path) || !last_states.get(value.path).state ||
+                     last_states.get(value.path).state != args.state || last_states.get(value.path).message != args.message) 
+                    && (!alertLog.get(args.path+args.state) || 
+                          (alertLog.get(args.path+args.state).timestamp + (repeatGap * 1000)) < eventTimeStamp)){
                   last_states.set(value.path, args)
+                  alertLog.set(args.path+args.state, { message: args.message, timestamp: eventTimeStamp})
                   app.debug('ADD2Q:'+args.path, args.mode, 'qSize:'+last_states.size)
                   if ( playing_sound == false ) {
                     play_event(args)
@@ -198,23 +206,28 @@ module.exports = function(app) {
       {
         sound_file = path.join(__dirname, "sounds", sound_file)
       }
-      let args = [ sound_file ]
-      if ( plugin_props.alarmAudioPlayerArguments && plugin_props.alarmAudioPlayerArguments.length > 0 ) {
-        args = [ ...plugin_props.alarmAudioPlayerArguments.split(' '), ...args ]
+      if ( fs.existsSync(sound_file) ) {
+        let args = [ sound_file ]
+        if ( plugin_props.alarmAudioPlayerArguments && plugin_props.alarmAudioPlayerArguments.length > 0 ) {
+          args = [ ...plugin_props.alarmAudioPlayerArguments.split(' '), ...args ]
+        }
+        app.debug('playing:'+soundEvent.audioFile,'mode:'+soundEvent.mode,"played:"+soundEvent.played)
+
+        let play = child_process.spawn(command, args)
+        playPID = play.pid
+
+        play.on('error', (err) => {
+          playPID = undefined
+          app.error('failed to play sound ' + err)
+        });
+
+        play.on('close', (code) => {
+          process_queue()
+        });
       }
-      app.debug('playing:'+soundEvent.audioFile,'mode:'+soundEvent.mode,"played:"+soundEvent.played)
-      
-      let play = child_process.spawn(command, args)
-      playPID = play.pid
-  
-      play.on('error', (err) => {
-        playPID = undefined
-        app.error('failed to play sound ' + err)
-      });
-  
-      play.on('close', (code) => {
-        process_queue()
-      });
+      else {
+        app.debug('not playing, sound file missing:'+sound_file)
+      }
     }
   }
 
@@ -389,6 +402,12 @@ module.exports = function(app) {
           description: 'Arguments to add to the audio player command',
           type: 'string'
         },
+        repeatGap: {
+          title: 'Minimum Gap Between Duplicate Notifications',
+          description: 'Limit rate of notifications when bouncing in/out of a zone (seconds)',
+          type: 'number',
+          default: repeatGapDefault
+        },
         mappings: {
           type: 'array',
           title: 'Custom Action For Specific Notifications',
@@ -436,6 +455,11 @@ module.exports = function(app) {
                 title: 'Do Not Play Notification Sound',
                 description: 'Only Speak/Say Notification Message',
                 default: false
+              },
+              repeatGap: {
+                title: 'Minimum Gap Between Duplicate Notifications',
+                description: 'Limit rate of notifications when bouncing in/out of this zone (seconds)',
+                type: 'number'
               }
             }
           }
