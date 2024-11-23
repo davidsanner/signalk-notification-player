@@ -227,6 +227,7 @@ module.exports = function(app) {
       }
       else {
         app.debug('not playing, sound file missing:'+sound_file)
+        process_queue()
       }
     }
   }
