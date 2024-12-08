@@ -18,6 +18,7 @@ const fs = require('fs')
 const path = require('path')
 const child_process = require('child_process')
 const say = require('say');
+const SlackNotify = require('slack-notify')
 
 module.exports = function(app) {
   var plugin = {}
@@ -78,6 +79,7 @@ module.exports = function(app) {
               let notice = false
               let custom_path = false
               let noPlay = false
+              let slackAlert = false
               let audioFile = notificationSounds[value.value.state]
               let repeatGap = plugin_props.repeatGap
 
@@ -89,6 +91,7 @@ module.exports = function(app) {
                   else if(notification.alarmType == 'single notice' ) notice=true
                   if(notification.noPlay == true) noPlay=true
                   if(notification.repeatGap) repeatGap=notification.repeatGap
+                  if(notification.slackAlert) slackAlert=true
                 }
               });
 
@@ -127,6 +130,17 @@ module.exports = function(app) {
                   app.debug('ADD2Q:'+args.path, args.mode, 'qSize:'+last_states.size)
                   if ( playing_sound == false ) {
                     play_event(args)
+                  }
+                  if ( slackAlert && plugin_props.slackWebhookURL != null) {
+                    app.debug("Sending Slack Message:",args.path,args.message)
+                    SlackNotify(plugin_props.slackWebhookURL).send({
+                      channel: plugin_props.slackChannel,
+                      text: plugin_props.slackTitle,
+                      fields: {
+                        'SignalK Notification / Type': args.path+" / "+args.state,
+                        'Message': args.message+" @ "+ new Date(eventTimeStamp).toISOString()
+                      }
+                    })
                   }
                 }
               }
@@ -409,9 +423,24 @@ module.exports = function(app) {
           type: 'number',
           default: repeatGapDefault
         },
+        slackWebhookURL: {
+          type: 'string',
+          title: 'Slack Webhook URL',
+          description: 'Optional Slack messaging for Custom Actions (https://api.slack.com/messaging/webhooks)'
+        },
+        slackTitle: {
+          type: 'string',
+          title: 'Slack message title'
+        },
+        slackChannel: {
+          type: 'string',
+          title: 'Slack channel',
+          default: '#signalk'
+        },
+
         mappings: {
           type: 'array',
-          title: 'Custom Action For Specific Notifications',
+          title: 'Custom Actions For Specific Notifications',
           items: {
             type: 'object',
             required: ['path'],
@@ -461,7 +490,13 @@ module.exports = function(app) {
                 title: 'Minimum Gap Between Duplicate Notifications',
                 description: 'Limit rate of notifications when bouncing in/out of this zone (seconds)',
                 type: 'number'
-              }
+              },
+              slackAlert: {
+                type: 'boolean',
+                title: 'Send Notification via Slack',
+                description: 'Also send message via Slack (if Webhook URL configured above)',
+                default: false
+              },
             }
           }
         }
