@@ -35,6 +35,7 @@ module.exports = function(app) {
   var queueIndex = 0
   var hasFestival = false
   var repeatGapDefault = 0  // no repeat rate control
+  var vesselName
   var notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
   var notificationSounds = {'emergency': notificationFiles[0], 'alarm': notificationFiles[1], 'warn': notificationFiles[2], 'alert': notificationFiles[3]}
   var enableNotificationTypes = {'emergency': 'continuous', 'alarm': 'continuous', 'warn': 'single notice', 'alert': 'single notice'}
@@ -51,7 +52,8 @@ module.exports = function(app) {
       if (!hasFestival) app.error('Error: please install festival package')
     }
     if(plugin_props.mappings) plugin_props.mappings.forEach((m) => { if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom })
-    subscribeToAlarms()
+    if ( !(vesselName=app.getSelfPath('name')) ) vesselName = "Unnamed"
+    subscribeToNotifications()
   }
 
   plugin.stop = function() {
@@ -79,7 +81,7 @@ module.exports = function(app) {
               let notice = false
               let custom_path = false
               let noPlay = false
-              let slackAlert = false
+              let msgServiceAlert = false
               let audioFile = notificationSounds[value.value.state]
               let repeatGap = plugin_props.repeatGap
 
@@ -91,7 +93,7 @@ module.exports = function(app) {
                   else if(notification.alarmType == 'single notice' ) notice=true
                   if(notification.noPlay == true) noPlay=true
                   if(notification.repeatGap) repeatGap=notification.repeatGap
-                  if(notification.slackAlert) slackAlert=true
+                  if(notification.msgServiceAlert) msgServiceAlert=true
                 }
               });
 
@@ -131,14 +133,15 @@ module.exports = function(app) {
                   if ( playing_sound == false ) {
                     play_event(args)
                   }
-                  if ( slackAlert && plugin_props.slackWebhookURL != null) {
+                  if ( msgServiceAlert && plugin_props.slackWebhookURL != null) {
                     app.debug("Sending Slack Message:",args.path,args.message)
                     SlackNotify(plugin_props.slackWebhookURL).send({
                       channel: plugin_props.slackChannel,
-                      text: plugin_props.slackTitle,
+                      text: vesselName+": "+args.message,
                       fields: {
-                        'SignalK Notification / Type': args.path+" / "+args.state,
-                        'Message': args.message+" @ "+ new Date(eventTimeStamp).toISOString()
+                        'SignalK Notification': args.path+" / "+args.state,
+                        'Message': args.message+" @ "+ new Date(eventTimeStamp).toISOString(),
+                        'Value': app.getSelfPath(args.path.substring(args.path.indexOf(".") + 1)+'.value')
                       }
                     })
                   }
@@ -426,11 +429,7 @@ module.exports = function(app) {
         slackWebhookURL: {
           type: 'string',
           title: 'Slack Webhook URL',
-          description: 'Optional Slack messaging for Custom Actions (https://api.slack.com/messaging/webhooks)'
-        },
-        slackTitle: {
-          type: 'string',
-          title: 'Slack message title'
+          description: 'Optional Slack messaging for Custom Actions (See: https://api.slack.com/messaging/webhooks)'
         },
         slackChannel: {
           type: 'string',
@@ -491,10 +490,10 @@ module.exports = function(app) {
                 description: 'Limit rate of notifications when bouncing in/out of this zone (seconds)',
                 type: 'number'
               },
-              slackAlert: {
+              msgServiceAlert: {
                 type: 'boolean',
                 title: 'Send Notification via Slack',
-                description: 'Also send message via Slack (if Webhook URL configured above)',
+                description: 'Send notifcation to Slack channel (if Webhook URL configured above)',
                 default: false
               },
             }
@@ -547,7 +546,7 @@ module.exports = function(app) {
   }
 */
 
-  function subscribeToAlarms()
+  function subscribeToNotifications()
   {
     const command = {
       context: 'vessels.self',
