@@ -306,10 +306,14 @@ module.exports = function(app) {
         'enableAlerts'
       ],
       properties: {
+        t1: {
+          type: "object",
+          title: "Emergencies Notification Settings"
+        },
         enableEmergencies: {
           type: 'string',
           'enum': notificationTypes,
-          title: ' # Emergency - Playback Method #',
+          title: 'Emergency - Playback Method',
           default: 'continuous'
         },
         emergencyAudioFile: {
@@ -329,10 +333,14 @@ module.exports = function(app) {
           default: true
         },
 
+        t2: {
+          type: "object",
+          title: "Alarm Notification Settings"
+        },
         enableAlarms: {
           type: 'string',
           'enum': notificationTypes,
-          title: ' # Alarm - Playback Method #',
+          title: 'Alarm - Playback Method',
           default: 'continuous'
         },
         alarmAudioFile: {
@@ -352,10 +360,14 @@ module.exports = function(app) {
           default: true
         },
 
+        t3: {
+          type: "object",
+          title: "Warning Notification Settings"
+        },
         enableWarnings: {
           type: 'string',
           'enum': notificationTypes,
-          title: ' # Warning - Playback Method #',
+          title: 'Warning - Playback Method',
           default: 'single notice'
         },
         warnAudioFile: {
@@ -375,10 +387,14 @@ module.exports = function(app) {
           default: false
         },
 
+        t4: {
+          type: "object",
+          title: "Alert Notification Settings"
+        },
         enableAlerts: {
           type: 'string',
           'enum': notificationTypes,
-          title: ' # Alert - Playback Method #',
+          title: 'Alert - Playback Method',
           default: 'single notice'
         },
         alertAudioFile: {
@@ -398,6 +414,10 @@ module.exports = function(app) {
           default: false
         },
 
+        t5: {
+          type: "object",
+          title: "General Settings"
+        },
         preCommand: {
           title: 'Custom Command Before Playing Notification',
           description: 'optional command to run before playing/speaking',
