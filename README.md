@@ -2,6 +2,7 @@ Signal K plugin for audio notifications
 =================================
 
 This plugin plays user configurable sounds and/or text to speech when a Signal K notification enters emergency/alarm/warn/notice state.
+Custom notifications can also be sent to slack channel.
 
 The playback options for each state (emergency/alarm/warn/notice/nominal) can be configure independently with the option to create custom playback rules for a specific path & state.  Custom commands can be initiated before and after a notification plays (eg. pause music, change volume, flash lights).
 
@@ -32,6 +33,8 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
+- version 1.8:  
+Slack support added for customize notifications. Update config layout.
 - version 1.7:  
 Option to limit notification rate when bouncing in/out of a zone (eg. tank or depth zone)
 - version 1.5.x:  
