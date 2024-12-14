@@ -1,7 +1,7 @@
 {
   "name": "signalk-notification-player",
-  "version": "1.7.0",
-  "description": "Customizable audio player and text to speech for active notifications",
+  "version": "1.8.0",
+  "description": "Customizable audio and text to speech playback of Signal K notifications w/ optional Slack integration",
   "main": "index.js",
   "keywords": [
     "signalk-node-server-plugin",
@@ -24,6 +24,7 @@
   "signalk-plugin-enabled-by-default": true,
   "dependencies": {
     "lodash": "^4.17.4",
+    "slack-notify": "^2.0.7",
     "fs": "^0.0.1-security",
     "say": "^0.16.0"
   }
