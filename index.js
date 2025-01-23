@@ -15,7 +15,7 @@
 
 const _ = require('lodash')
 const fs = require('fs')
-const path = require('path')
+const fspath = require('path')
 const child_process = require('child_process')
 const say = require('say');
 const SlackNotify = require('slack-notify')
@@ -27,116 +27,120 @@ module.exports = function(app) {
   plugin.description = 'Plugin that plays notification sounds/speech'
  
   var unsubscribes = []
-  var playing_sound = false
-  var plugin_props
-  var last_states = new Map()
+  var queueActive = false
+  var pluginProps
+  var alertQueue = new Map()
   var alertLog = new Map()
+  var lastAlert = ''
   var playPID
   var queueIndex = 0
+  var muteUntil = 0
   var hasFestival = false
   var repeatGapDefault = 0  // no repeat rate control
   var vesselName
   var notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
   var notificationSounds = {'emergency': notificationFiles[0], 'alarm': notificationFiles[1], 'warn': notificationFiles[2], 'alert': notificationFiles[3]}
   var enableNotificationTypes = {'emergency': 'continuous', 'alarm': 'continuous', 'warn': 'single notice', 'alert': 'single notice'}
-  var notificationPrePost = {'emergency': true, 'alarm': true, 'warn': false, 'alert': false}
+  var notificationPrePost = {'emergency': true, 'alarm': true, 'warn': true, 'alert': false}
   const soundEvent = { path: '', state: '', audioFile: '', message: '', mode: '', played: 0, numNotifications: 0}
   const soundEventLog = { message: '', timestamp: 0}
 
   plugin.start = function(props) {
-    plugin_props = props
-    if ( !plugin_props.repeatGap ) plugin_props.repeatGap = repeatGapDefault
+    pluginProps = props
+    if ( !pluginProps.repeatGap ) pluginProps.repeatGap = repeatGapDefault
 
     if( process.platform === 'linux' ) { // quick check if festival installed for linux
-      process.env.PATH.replace(/["]+/g, '').split(path.delimiter).filter(Boolean).forEach((element) => {if(fs.existsSync(element+'/festival')) hasFestival=true})
+      process.env.PATH.replace(/["]+/g, '').split(fspath.delimiter).filter(Boolean).forEach((element) => {if(fs.existsSync(element+'/festival')) hasFestival=true})
       if (!hasFestival) app.error('Error: please install festival package')
     }
-    if(plugin_props.mappings) plugin_props.mappings.forEach((m) => { if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom })
+    if(pluginProps.mappings) pluginProps.mappings.forEach((m) => { if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom })
     if ( !(vesselName=app.getSelfPath('name')) ) vesselName = "Unnamed"
-    subscribeToNotifications()
-  }
 
+    subscribeToNotifications()
+    subscribeToHandlers()
+  }
   plugin.stop = function() {
     unsubscribes.forEach(function(func) { func() })
     unsubscribes = []
   }
-
-  function subscription_error(err) {
+  function subscriptionError(err) {
     app.error('error: ' + err)
   }
 
-  function got_delta(notification)
+  function processNotifications(fullNotification)
   {
     //app.debug('notification event: %o', notification)
-    notification.updates.forEach(function(update) {
-      update.values.forEach(function(value) {
-        //app.debug('notification value: %o', value)
-        if ( value.value != null
-             && typeof value.value.state != 'undefined' )
+    fullNotification.updates.forEach(function(update) {
+      //app.debug('notification update value: %o', update)
+      update.values.forEach(function(notifcation) {
+        nPath = notifcation.path ; value = notifcation.value
+        //app.debug('notification value',notifcation)   // value.path & value.value 
+        //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
+        //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
+
+        if ( value != null && typeof value.state != 'undefined' )
         {
-          if( typeof value.value.method != 'undefined'
-            && value.value.method.indexOf('sound') != -1 )
+          if( typeof value.method != 'undefined' && value.method.indexOf('sound') != -1 )
           {
               let continuous = false
               let notice = false
-              let custom_path = false
               let noPlay = false
               let msgServiceAlert = false
-              let audioFile = notificationSounds[value.value.state]
-              let repeatGap = plugin_props.repeatGap
+              let audioFile = notificationSounds[value.state]
+              let repeatGap = pluginProps.repeatGap
 
-              if(plugin_props.mappings) plugin_props.mappings.forEach(function(notification) {   // check for custom notice
-                if( value.path == notification.path && value.value.state == notification.state){
-                  custom_path = true
-                  if(notification.alarmAudioFile ) audioFile = notification.alarmAudioFile
-                  if(notification.alarmType == 'continuous') continuous=true
-                  else if(notification.alarmType == 'single notice' ) notice=true
-                  if(notification.noPlay == true) noPlay=true
-                  if(notification.repeatGap) repeatGap=notification.repeatGap
-                  if(notification.msgServiceAlert) msgServiceAlert=true
-                }
-              });
-
-              if(!custom_path) {
-                if( enableNotificationTypes[value.value.state] == 'continuous' )
+              ppm = pluginProps.mappings   // // check for custom notice & configure if found
+              if( pluginProps.mappings && nPath && value.state &&
+                (notification = pluginProps.mappings.find(ppm => ppm.path === nPath && ppm.state === value.state ) )) { 
+                //app.debug("Found custom notification", notification )
+                if(notification.alarmAudioFile ) audioFile = notification.alarmAudioFile
+                if(notification.alarmType == 'continuous') continuous=true
+                else if(notification.alarmType == 'single notice' ) notice=true
+                if(notification.noPlay == true) noPlay=true
+                if(notification.repeatGap) repeatGap=notification.repeatGap
+                if(notification.msgServiceAlert) msgServiceAlert=true
+              } else {
+                if( enableNotificationTypes[value.state] == 'continuous' )
                   continuous=true
-                else if ( enableNotificationTypes[value.value.state] == 'single notice' )
+                else if ( enableNotificationTypes[value.state] == 'single notice' )
                   notice=true
               }
 
-              if ( notice || continuous )
+              if ( notice || continuous )  // otherwise delete from Q
               {
                 let eventTimeStamp = new Date(update.timestamp).getTime()
                 let args = Object.create(soundEvent)
                 args.audioFile = audioFile
-                args.path=value.path
-                args.state = value.value.state
+                args.path=nPath
+                args.state = value.state
                 args.played = 0
                 args.numNotifications = 0
                 if (audioFile && !noPlay) args.numNotifications++
                 else args.audioFile = ""
-                if (value.value.message) { 
+                if (value.message) { 
                   args.numNotifications++
-                  args.message = value.value.message
+                  args.message = value.message
                 }
                 if ( notice ){ args.mode = 'notice' }
                 else if ( continuous ) { args.mode = 'continuous' }
 
        // only add if new path entry or if changing existing path's state (eg. alarm to alert) OR if messages changes && not bouncing/recent
-                if( (!last_states.get(value.path) || !last_states.get(value.path).state ||
-                     last_states.get(value.path).state != args.state || last_states.get(value.path).message != args.message) 
-                    && (!alertLog.get(args.path+args.state) || 
-                          (alertLog.get(args.path+args.state).timestamp + (repeatGap * 1000)) < eventTimeStamp)){
-                  last_states.set(value.path, args)
-                  alertLog.set(args.path+args.state, { message: args.message, timestamp: eventTimeStamp})
-                  app.debug('ADD2Q:'+args.path, args.mode, 'qSize:'+last_states.size)
-                  if ( playing_sound == false ) {
-                    play_event(args)
+                if( (!alertQueue.get(nPath) || !alertQueue.get(nPath).state ||
+                     alertQueue.get(nPath).state != args.state || alertQueue.get(nPath).message != args.message) 
+                    && (!alertLog.get(args.path+"."+args.state) || (alertLog.get(args.path+"."+args.state).timestamp + (repeatGap * 1000)) < eventTimeStamp ||
+                         args.state == 'emergency' || args.state == 'alarm') ){
+                  alertQueue.set(nPath, args)
+                  lastAlert = args.path+"."+args.state
+                  alertLog.set(args.path+"."+args.state, { message: args.message, timestamp: eventTimeStamp})
+                  app.debug('ADD2Q:'+args.path, args.mode, args.state, 'qSize:'+alertQueue.size)
+                  if ( !queueActive && ( !muteUntil || muteUntil <= now() ) ) {  // check for now() is just safety bug catch
+                    queueActive = true
+                    processQueue()  //playEvent(args)
                   }
-                  if ( msgServiceAlert && plugin_props.slackWebhookURL != null) {
-                    app.debug("Sending Slack Message:",args.path,args.message)
-                    SlackNotify(plugin_props.slackWebhookURL).send({
-                      channel: plugin_props.slackChannel,
+                  if ( msgServiceAlert && pluginProps.slackWebhookURL != null) {
+                    app.debug("Slack Message:",args.path,args.message)
+                    SlackNotify(pluginProps.slackWebhookURL).send({
+                      channel: pluginProps.slackChannel,
                       text: vesselName+": "+args.message,
                       fields: {
                         'SignalK Notification': args.path+" / "+args.state,
@@ -147,86 +151,85 @@ module.exports = function(app) {
                   }
                 }
               }
-              else if ( last_states.has(value.path) )
+              else if ( alertQueue.has(nPath) ) // no continuous or single notice method ... typical back to normal state, stop playing
               {
-                if(last_states.get(value.path).played != true) {
-                  last_states.get(value.path).mode = 'notice'
+                if(alertQueue.get(nPath).played != true) {
+                  alertQueue.get(nPath).mode = 'notice'
                 } else
-                  last_states.delete(value.path)
+                  alertQueue.delete(nPath)  // no continuous or single notice method for this state so delete
               }
           }
-          else if ( last_states.has(value.path) )
+          else if ( alertQueue.has(nPath) ) // has sound method value .. value.method.indexOf('sound') != -1 
           {
-             if(last_states.get(value.path).played != true) {
-               last_states.get(value.path).mode = 'notice'
+             if(alertQueue.get(nPath).played != true) {
+               alertQueue.get(nPath).mode = 'notice'
              } else
-               last_states.delete(value.path)
+               alertQueue.delete(nPath)
           }
         }
       })
     })
-    //app.debug('Active: '+last_states.size)
-    if ( last_states.size === 0 && playing_sound) { 
-      stop_playing_queue()
+    //app.debug('Active: '+alertQueue.size)
+    if ( alertQueue.size === 0 && queueActive) { 
+      stopProcessingQueue()
     }
   }
     
-  function stop_playing_queue()
+  function stopProcessingQueue()
   {
-    app.debug('stop playing')
-    playing_sound = false
+    //app.debug('stop playing')
+    queueActive = false
     if (typeof playPID === 'number') process.kill(playPID)
-    if ( plugin_props.postCommand && plugin_props.postCommand.length > 0 ) {
+    if ( pluginProps.postCommand && pluginProps.postCommand.length > 0 ) {
       const { exec } = require('node:child_process')
-      app.debug('post command: %s', plugin_props.postCommand)
-      exec(plugin_props.postCommand)
+      app.debug('post-command: %s', pluginProps.postCommand)
+      exec(pluginProps.postCommand)
     } 
   }
 
-  function play_event(soundEvent)
+  function playEvent(soundEvent)
   {
     soundEvent.played++
     //app.debug("SOUND EVENT:",soundEvent)
-    //soundEvent - path state audioFile message mode played numNotifications
+    //soundEvent object: path state audioFile message mode played numNotifications
 
     if ( notificationPrePost[soundEvent.state] ){
     //if ( soundEvent.mode == 'continuous') {
-      if (  playing_sound != true && plugin_props.preCommand && plugin_props.preCommand.length > 0 ) { 
+      if (  queueActive != true && pluginProps.preCommand && pluginProps.preCommand.length > 0 ) { 
         const { exec } = require('node:child_process')
-        app.debug('pre command: %s', plugin_props.preCommand)
-        exec(plugin_props.preCommand)
+        app.debug('pre-command: %s', pluginProps.preCommand)
+        exec(pluginProps.preCommand)
       }
-      playing_sound = true
+      queueActive = true
     }
-
     if ( (soundEvent.message && soundEvent.played == 2) || (!soundEvent.audioFile && soundEvent.played == 1)){
       if( process.platform === "linux" && !hasFestival ) {
         app.debug('skipping saying:'+soundEvent.message,'mode:'+soundEvent.mode,"played:"+soundEvent.played)
-        process_queue()
+        processQueue()
       }
       else {
         app.debug('saying:'+soundEvent.message,'mode:'+soundEvent.mode,"played:"+soundEvent.played)
         try {
-          say.speak(soundEvent.message, null,null, (err) => { process_queue() })
+          say.speak(soundEvent.message, null,null, (err) => { processQueue() })
         }
         catch(error) {
           app.debug("ERROR:"+error)
-          process_queue()
+          processQueue()
         }
       }
     }
     else if ( soundEvent.audioFile ) {
-      let command = plugin_props.alarmAudioPlayer
-      sound_file = soundEvent.audioFile
+      let command = pluginProps.alarmAudioPlayer
+      soundFile = soundEvent.audioFile
   
-      if ( sound_file && sound_file.charAt(0) != '/' )
+      if ( soundFile && soundFile.charAt(0) != '/' )
       {
-        sound_file = path.join(__dirname, "sounds", sound_file)
+        soundFile = fspath.join(__dirname, "sounds", soundFile)
       }
-      if ( fs.existsSync(sound_file) ) {
-        let args = [ sound_file ]
-        if ( plugin_props.alarmAudioPlayerArguments && plugin_props.alarmAudioPlayerArguments.length > 0 ) {
-          args = [ ...plugin_props.alarmAudioPlayerArguments.split(' '), ...args ]
+      if ( fs.existsSync(soundFile) ) {
+        let args = [ soundFile ]
+        if ( pluginProps.alarmAudioPlayerArguments && pluginProps.alarmAudioPlayerArguments.length > 0 ) {
+          args = [ ...pluginProps.alarmAudioPlayerArguments.split(' '), ...args ]
         }
         app.debug('playing:'+soundEvent.audioFile,'mode:'+soundEvent.mode,"played:"+soundEvent.played)
 
@@ -236,59 +239,64 @@ module.exports = function(app) {
         play.on('error', (err) => {
           playPID = undefined
           app.error('failed to play sound ' + err)
+          processQueue()
         });
 
         play.on('close', (code) => {
-          process_queue()
+          processQueue()
         });
       }
       else {
-        app.debug('not playing, sound file missing:'+sound_file)
-        process_queue()
+        app.debug('not playing, sound file missing:'+soundFile)
+        processQueue()
       }
     }
   }
 
-  function process_queue() {
+  function processQueue() {
       //if ( code == 0 ) {
         playPID = undefined
 
-        if ( last_states.size > 0 ) {
-          if(queueIndex >= last_states.size) {queueIndex = 0}
-          audioEvent = Array.from(last_states)[queueIndex][1]
+        if ( muteUntil ) {
+            app.debug( "Muted in processQueue to", muteUntil)   // should we ever be here?
+        }
+        else if ( alertQueue.size > 0 ) {
+          if(queueIndex >= alertQueue.size) {queueIndex = 0}
+          audioEvent = Array.from(alertQueue)[queueIndex][1]
           //app.debug(audioEvent)
 
           if(audioEvent.played < audioEvent.numNotifications) {
-            play_event(audioEvent)
+            playEvent(audioEvent)
           }
           else {
             if(audioEvent.mode != 'continuous' ) {  // single play so delete
-              last_states.delete(audioEvent.path)
+              alertQueue.delete(audioEvent.path)
             }
             else {     // continuous, so reset counter
               audioEvent.played = 0
             }
             queueIndex++   // next PATH if in queue
-            if(queueIndex >= last_states.size) queueIndex = 0
-            if(last_states.size > 0 ) { 
-              play_event(Array.from(last_states)[queueIndex][1])
+            if(queueIndex >= alertQueue.size) queueIndex = 0
+            if(alertQueue.size > 0 ) { 
+              playEvent(Array.from(alertQueue)[queueIndex][1])
             }
             else {
               //muteMethod( audioEvent.path, "" )
-              if(playing_sound) stop_playing_queue()
+              if(queueActive) stopProcessingQueue()
               app.debug("Queue Empty, waiting...")
             }
           }
         }
         else { 
           //muteMethod( audioEvent.path, "" )
-          if(playing_sound) stop_playing_queue()
-          app.debug("Queue Empty, waiting....")
+          if(queueActive) stopProcessingQueue()
+          app.debug("Queue Empty, waiting ...")
         }
-     // else {
-     //   playPID = undefined
-     // }
   }
+
+  function now() {  return Math.floor(Date.now()) } 
+
+  function delay(time) { return new Promise(resolve => setTimeout(resolve, time)); }
 
   plugin.schema = function() {
 
@@ -442,7 +450,7 @@ module.exports = function(app) {
         },
         repeatGap: {
           title: 'Minimum Gap Between Duplicate Notifications',
-          description: 'Limit rate of notifications when bouncing in/out of a zone (seconds)',
+          description: 'Limit rate of notifications when bouncing in/out of a zone (seconds), except emergency & alarm',
           type: 'number',
           default: repeatGapDefault
         },
@@ -507,7 +515,7 @@ module.exports = function(app) {
               },
               repeatGap: {
                 title: 'Minimum Gap Between Duplicate Notifications',
-                description: 'Limit rate of notifications when bouncing in/out of this zone (seconds)',
+                description: 'Limit rate of notifications when bouncing in/out of this zone (seconds), ignored for emergency & alarm',
                 type: 'number'
               },
               msgServiceAlert: {
@@ -524,47 +532,40 @@ module.exports = function(app) {
     //if(typeof alarmAudioFileCustom !== 'undefined') alarmAudioFile = alarmAudioFileCustom
     //if(typeof warnAudioFileCustom !== 'undefined') warnAudioFile = warnAudioFileCustom
 
-    if(typeof plugin_props !== 'undefined' ) {
-      enableNotificationTypes.emergency = plugin_props.enableEmergencies
-      enableNotificationTypes.alarm = plugin_props.enableAlarms
-      enableNotificationTypes.warn = plugin_props.enableWarnings
-      enableNotificationTypes.alert = plugin_props.enableAlerts
+    if(typeof pluginProps !== 'undefined' ) {
+      enableNotificationTypes.emergency = pluginProps.enableEmergencies
+      enableNotificationTypes.alarm = pluginProps.enableAlarms
+      enableNotificationTypes.warn = pluginProps.enableWarnings
+      enableNotificationTypes.alert = pluginProps.enableAlerts
   
-      notificationPrePost.emergency = plugin_props.prePostEmergency
-      notificationPrePost.alarm = plugin_props.prePostAlarm
-      notificationPrePost.warn = plugin_props.prePostWarn
-      notificationPrePost.alert = plugin_props.prePostAlert
+      notificationPrePost.emergency = pluginProps.prePostEmergency
+      notificationPrePost.alarm = pluginProps.prePostAlarm
+      notificationPrePost.warn = pluginProps.prePostWarn
+      notificationPrePost.alert = pluginProps.prePostAlert
   
-      if(plugin_props.emergencyAudioFileCustom) notificationSounds.emergency = plugin_props.emergencyAudioFileCustom
-      else if (plugin_props.emergencyAudioFile) notificationSounds.emergency = plugin_props.emergencyAudioFile
-      if(plugin_props.alarmAudioFileCustom) notificationSounds.alarm = plugin_props.alarmAudioFileCustom
-      else if (plugin_props.alarmAudioFile) notificationSounds.alarm = plugin_props.alarmAudioFile
-      if(plugin_props.warnAudioFileCustom) notificationSounds.warn = plugin_props.warnAudioFileCustom
-      else if (plugin_props.warnAudioFile) notificationSounds.warn = plugin_props.warnAudioFile
-      if(plugin_props.alertAudioFileCustom) notificationSounds.alert = plugin_props.alertAudioFileCustom
-      else if (plugin_props.alertAudioFile) notificationSounds.alert = plugin_props.alertAudioFile
+      if(pluginProps.emergencyAudioFileCustom) notificationSounds.emergency = pluginProps.emergencyAudioFileCustom
+      else if (pluginProps.emergencyAudioFile) notificationSounds.emergency = pluginProps.emergencyAudioFile
+      if(pluginProps.alarmAudioFileCustom) notificationSounds.alarm = pluginProps.alarmAudioFileCustom
+      else if (pluginProps.alarmAudioFile) notificationSounds.alarm = pluginProps.alarmAudioFile
+      if(pluginProps.warnAudioFileCustom) notificationSounds.warn = pluginProps.warnAudioFileCustom
+      else if (pluginProps.warnAudioFile) notificationSounds.warn = pluginProps.warnAudioFile
+      if(pluginProps.alertAudioFileCustom) notificationSounds.alert = pluginProps.alertAudioFileCustom
+      else if (pluginProps.alertAudioFile) notificationSounds.alert = pluginProps.alertAudioFile
     }
-
     return schema
   }
 
-/*
-  function muteMethod( path, value ) {
-    app.handleMessage('self.notificationhandler', {
-      updates: [
-        {
-          values: [
-            {
-              path: "notifications.electrical.batteries.bmv.relay",
-              method: []
-            }
-          ],
-          $source: 'self.notificationhandler'
-        }
-      ]
-    })
+  function subscribeToHandlers()
+  {
+    app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: false } ] } ] })
+    app.registerPutHandler('vessels.self', 'digital.notificationPlayer.disable', handleDisable);
+    app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.silence', value: false } ] } ] })
+    app.registerPutHandler('vessels.self', 'digital.notificationPlayer.silence', handleSilence);
+    app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.resolve', value: false } ] } ] })
+    app.registerPutHandler('vessels.self', 'digital.notificationPlayer.resolve', handleResolve);
+    //app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.ignoreLast', value: false } ] } ] })
+    //app.registerPutHandler('vessels.self', 'digital.notificationPlayer.ignoreLast', handleIgnoreLast);
   }
-*/
 
   function subscribeToNotifications()
   {
@@ -575,8 +576,161 @@ module.exports = function(app) {
         policy: 'instant'
       }]
     } 
-    app.subscriptionmanager.subscribe(command, unsubscribes, subscription_error, got_delta)
+    app.subscriptionmanager.subscribe(command, unsubscribes, subscriptionError, processNotifications)
   }
 
+////
+      // notifications.navigation.anchor { meta: { description: 'The anchor data, for anchor watch etc' }, value: { state: 'emergency', method: [ 'visual', 'sound' ], message: 'Emergency' }, '$source': 'anchoralarm', timestamp: '2025...' } 
+
+  function silenceNotifications() {
+    for (let [key, value] of  alertQueue.entries()) {
+      app.debug("Silencing PATH:", key)
+      const nvalue = app.getSelfPath(key);
+      const nmethod = nvalue.value.method.filter(item => item !== 'sound')
+      const delta = {
+        updates: [{ 
+          values: [{
+            path: key,
+              value: {
+                state: nvalue.value.state,
+                method: nmethod,
+                message: nvalue.value.message
+             }
+          }], 
+          $source: nvalue.$source,
+        }]
+      }
+      app.handleMessage(plugin.id, delta)
+    }
+  }
+
+  function resolveNotifications() {
+    for (let [key, value] of  alertQueue.entries()) {
+      app.debug("Resolve PATH:", key)
+      const nvalue = app.getSelfPath(key);
+      const delta = {
+        updates: [{ 
+          values: [{
+            path: key,
+            value: {
+              state: 'normal',
+              method: nvalue.value.method,
+              message: nvalue.value.message
+            }
+          }], 
+          $source: nvalue.$source,
+        }]
+      }
+      app.handleMessage(plugin.id, delta)
+    }
+  }
+
+////
+
+  function handleDisable(context, path, value, callback) {
+    //app.debug("handleDisable", context, path, value)
+    if( value == true ) {
+      //if( muteUntil == 0 )
+      if((muteUntil - (3600 * 1000)) < ( now() - 1000 )) {  // bounce check, accept at max 1hz rate
+        muteUntil = now() + (3600 * 1000)  // 1hr max
+        app.debug("Disabling in handleDisable", value)
+        app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: value } ] } ] })
+        //muteUntil = now() + (300 * 1000)   // 5 minutes
+  
+        delay( 3600 * 1000 ).then(() => {
+          if ( muteUntil <= now() &&  muteUntil != 0 ) {  // check if later timer set and if not already cleared
+            app.debug("Enabling in handleDisable via timeout")
+            muteUntil = 0
+            app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: false } ] } ] })
+            processQueue()
+          }
+        })
+      }
+    } else {
+      app.debug("Enabling in handleDisable", value)
+      muteUntil = 0
+      app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: false } ] } ] })
+      processQueue()
+    }
+    return { state: 'COMPLETED', statusCode: 200 };
+  }
+  function handleSilence(context, path, value, callback) {
+    silenceNotifications()
+    return { state: 'COMPLETED', statusCode: 200 };
+  }
+  function handleResolve(context, path, value, callback) {
+    resolveNotifications()
+    return { state: 'COMPLETED', statusCode: 200 };
+  }
+/*
+  function handleIgnoreLast(context, path, value, callback) {
+      if(!lastAlert) { return { state: 'COMPLETED', statusCode: 200 } }
+      if( laVal = alertLog.get(lastAlert) ) {
+        laVal.timestamp = now() + ( 1200 * 1000 )   // 20 minutes
+        alertLog.set(lastAlert, laVal)   // set lastAlert time in the future to silence it until then
+        alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf(".")))   // clear active Q entry / any type
+      }
+      return { state: 'COMPLETED', statusCode: 200 };
+  }
+*/
+
+////
+
+  plugin.registerWithRouter = (router) => {
+    router.get("/silence", (req, res) => {
+      silenceNotifications()
+      res.send("Active Notifications Silenced")
+    })
+    router.get("/resolve", (req, res) => {
+      resolveNotifications()
+      res.send("Active Notifications Resolved")
+    })
+    router.get("/disable", (req, res) => {
+      var muteTime = parseInt(req._parsedUrl.query)
+      if ( isNaN(muteTime) ) { muteTime = 3600 }   // default 3600 seconds
+      if (muteTime > 28800) { 
+        muteTime = 18800 // max 8hr disable
+        res.send("Disable playback for "+muteTime+" seconds, maxmium allowed.")
+      } else {
+        res.send("Disable playback for "+muteTime+" seconds")
+      }
+      app.debug("Disable playback for next", muteTime, "seconds")
+      muteUntil = now() + (muteTime * 1000)
+      app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: true } ] } ] })
+      delay( muteTime * 1000 ).then(() => {
+        if ( muteUntil <= now() &&  muteUntil != 0 ) {  // check if later timer set and if not already cleared
+          app.debug("Enable in get/disable")
+          app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: false } ] } ] })
+          muteUntil = 0
+          processQueue()
+        }
+      })
+    })
+/*
+    router.get("/ignoreLast", (req, res) => {
+      if(!lastAlert) { res.send("No alerts to mute.") ; return }
+      var muteTime = parseInt(req._parsedUrl.query)
+      if ( isNaN(muteTime) ) { muteTime = 600 }   // default 600 seconds
+      if (muteTime > 3600) {  // max 1hr
+        muteTime = 3600
+        res.send("Muting "+lastAlert+ " playback for "+muteTime+" seconds, maxmium allowed.")
+      } else {
+        res.send("Muting "+lastAlert+ " playback for "+muteTime+" seconds")
+      }
+      if( laVal = alertLog.get(lastAlert) ) {
+        laVal.timestamp = now() + ( muteTime * 1000 )
+        alertLog.set(lastAlert, laVal)   // set lastAlert time in the future to silence it until then
+        alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf(".")))   // clear active Q entry / any type
+      }
+      app.debug("Muting PB for", lastAlert, "next", muteTime, "seconds")
+      //for (type in enableNotificationTypes) { app.debug(type) }
+      //app.debug("alertLog:", alertLog) ; //app.debug("alertQueue:", alertQueue)
+    })
+*/
+  } // end registerWithRouter()
+
   return plugin;
+
 }
+
+// END //
