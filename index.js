@@ -67,21 +67,15 @@ module.exports = function(app) {
     app.error('error: ' + err)
   }
 
-  function processNotifications(fullNotification)
-  {
-    //app.debug('notification event: %o', notification)
+  function processNotifications(fullNotification) {
     fullNotification.updates.forEach(function(update) {
-      //app.debug('notification update value: %o', update)
-      update.values.forEach(function(notifcation) {
+      update.values.forEach(function(notifcation) {  // loop for each notification update
         nPath = notifcation.path ; value = notifcation.value
-        //app.debug('notification value',notifcation)   // value.path & value.value 
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
 
-        if ( value != null && typeof value.state != 'undefined' )
-        {
-          if( typeof value.method != 'undefined' && value.method.indexOf('sound') != -1 )
-          {
+        if ( value != null && typeof value.state != 'undefined' ) {
+          if( typeof value.method != 'undefined' && value.method.indexOf('sound') != -1 ) {
               let continuous = false
               let notice = false
               let noPlay = false
@@ -106,9 +100,13 @@ module.exports = function(app) {
                   notice=true
               }
 
-              if ( notice || continuous )  // otherwise delete from Q
-              {
-                let eventTimeStamp = new Date(update.timestamp).getTime()
+              let eventTimeStamp = new Date(update.timestamp).getTime()
+                    // Has notification type, otherwise delete from Q and only add if new path entry or if changing existing path's state (eg. alarm to alert) 
+                    // and if messages changes && not bouncing/recent (except alarm & emergency)
+              if ( ( notice || continuous ) && (!alertQueue.get(nPath) || !alertQueue.get(nPath).state ||
+                     alertQueue.get(nPath).state != value.state || alertQueue.get(nPath).message != value.message) 
+                    && (!alertLog.get(nPath+"."+value.state) || (alertLog.get(nPath+"."+value.state).timestamp + (repeatGap * 1000)) < eventTimeStamp ||
+                         value.state == 'emergency' || value.state == 'alarm') ) {
                 let args = Object.create(soundEvent)
                 args.audioFile = audioFile
                 args.path=nPath
@@ -124,52 +122,43 @@ module.exports = function(app) {
                 if ( notice ){ args.mode = 'notice' }
                 else if ( continuous ) { args.mode = 'continuous' }
 
-       // only add if new path entry or if changing existing path's state (eg. alarm to alert) OR if messages changes && not bouncing/recent
-                if( (!alertQueue.get(nPath) || !alertQueue.get(nPath).state ||
-                     alertQueue.get(nPath).state != args.state || alertQueue.get(nPath).message != args.message) 
-                    && (!alertLog.get(args.path+"."+args.state) || (alertLog.get(args.path+"."+args.state).timestamp + (repeatGap * 1000)) < eventTimeStamp ||
-                         args.state == 'emergency' || args.state == 'alarm') ){
-                  alertQueue.set(nPath, args)
-                  lastAlert = args.path+"."+args.state
-                  alertLog.set(args.path+"."+args.state, { message: args.message, timestamp: eventTimeStamp})
-                  app.debug('ADD2Q:'+args.path, args.mode, args.state, 'qSize:'+alertQueue.size)
-                  if ( !queueActive && ( !muteUntil || muteUntil <= now() ) ) {  // check for now() is just safety bug catch
-                    queueActive = true
-                    processQueue()  //playEvent(args)
-                  }
-                  if ( msgServiceAlert && pluginProps.slackWebhookURL != null) {
-                    app.debug("Slack Message:",args.path,args.message)
-                    SlackNotify(pluginProps.slackWebhookURL).send({
-                      channel: pluginProps.slackChannel,
-                      text: vesselName+": "+args.message,
-                      fields: {
-                        'SignalK Notification': args.path+" / "+args.state,
-                        'Message': args.message+" @ "+ new Date(eventTimeStamp).toISOString(),
-                        'Value': app.getSelfPath(args.path.substring(args.path.indexOf(".") + 1)+'.value')
-                      }
-                    })
-                  }
+                alertQueue.set(nPath, args)
+                lastAlert = args.path+"."+args.state
+                alertLog.set(args.path+"."+args.state, { message: args.message, timestamp: eventTimeStamp})
+                app.debug('ADD2Q:'+args.path, args.mode, args.state, 'qSize:'+alertQueue.size)
+                if ( !queueActive && ( !muteUntil || muteUntil <= now() ) ) {  // check for now() is just safety bug catch
+                  queueActive = true
+                  processQueue()  //playEvent(args)
+                }
+                if ( msgServiceAlert && pluginProps.slackWebhookURL != null) {
+                  app.debug("Slack Message:",args.path,args.message)
+                  SlackNotify(pluginProps.slackWebhookURL).send({
+                    channel: pluginProps.slackChannel,
+                    text: vesselName+": "+args.message,
+                    fields: {
+                      'SignalK Notification': args.path+" / "+args.state,
+                      'Message': args.message+" @ "+ new Date(eventTimeStamp).toISOString(),
+                      'Value': app.getSelfPath(args.path.substring(args.path.indexOf(".") + 1)+'.value')
+                    }
+                  })
                 }
               }
-              else if ( alertQueue.has(nPath) ) // no continuous or single notice method ... typical back to normal state, stop playing
-              {
-                if(alertQueue.get(nPath).played != true) {
+              else if ( alertQueue.has(nPath) ) {  // resolved: state's notificationType has no continuous or single notice method, typical back to normal state
+                if(alertQueue.get(nPath).played != true) { // try and play at least once but if cleared then only once
                   alertQueue.get(nPath).mode = 'notice'
                 } else
                   alertQueue.delete(nPath)  // no continuous or single notice method for this state so delete
               }
           }
-          else if ( alertQueue.has(nPath) ) // has sound method value .. value.method.indexOf('sound') != -1 
-          {
-             if(alertQueue.get(nPath).played != true) {
+          else if ( alertQueue.has(nPath) )  { // silenced: no method or sound method value
+             if(alertQueue.get(nPath).played != true) { // try and play at least once but if cleared then only once
                alertQueue.get(nPath).mode = 'notice'
              } else
                alertQueue.delete(nPath)
           }
         }
-      })
+      })  //  end loop for each notification update
     })
-    //app.debug('Active: '+alertQueue.size)
     if ( alertQueue.size === 0 && queueActive) { 
       stopProcessingQueue()
     }
@@ -302,7 +291,7 @@ module.exports = function(app) {
 
     let defaultAudioPlayer = 'mpg321'
     if( process.platform === 'darwin' ) defaultAudioPlayer = 'afplay'
-    let notificationTypes = ['continuous', 'single notice', 'mute']
+    let notificationTypes = ['continuous', 'single notice', '-PLAYBACK DISABLED-']
 
     let schema = {
       type: 'object',
@@ -529,8 +518,6 @@ module.exports = function(app) {
         }
       }
     }
-    //if(typeof alarmAudioFileCustom !== 'undefined') alarmAudioFile = alarmAudioFileCustom
-    //if(typeof warnAudioFileCustom !== 'undefined') warnAudioFile = warnAudioFileCustom
 
     if(typeof pluginProps !== 'undefined' ) {
       enableNotificationTypes.emergency = pluginProps.enableEmergencies
@@ -580,7 +567,6 @@ module.exports = function(app) {
   }
 
 ////
-      // notifications.navigation.anchor { meta: { description: 'The anchor data, for anchor watch etc' }, value: { state: 'emergency', method: [ 'visual', 'sound' ], message: 'Emergency' }, '$source': 'anchoralarm', timestamp: '2025...' } 
 
   function silenceNotifications() {
     for (let [key, value] of  alertQueue.entries()) {
@@ -605,23 +591,27 @@ module.exports = function(app) {
   }
 
   function resolveNotifications() {
-    for (let [key, value] of  alertQueue.entries()) {
-      app.debug("Resolve PATH:", key)
-      const nvalue = app.getSelfPath(key);
-      const delta = {
-        updates: [{ 
-          values: [{
-            path: key,
-            value: {
-              state: 'normal',
-              method: nvalue.value.method,
-              message: nvalue.value.message
-            }
-          }], 
-          $source: nvalue.$source,
-        }]
+    app.debug("Resolve Notifcations")
+    for (let [key, value] of alertLog.entries()) {  // check log for any alert played including ones silenced (currently not in alertQueue)
+      key = key.substring(0,key.lastIndexOf("."))
+      const nvalue = app.getSelfPath(key)
+      if( nvalue.value.state != 'normal' && nvalue.value.state != 'nominal'  ) { // only clear -> set-to-normal elevated notification states
+        app.debug("Resolve Clearing:", key)
+        const delta = {
+          updates: [{ 
+            values: [{
+              path: key,
+              value: {
+                state: 'normal',
+                method: nvalue.value.method,
+                message: nvalue.value.message
+              }
+            }], 
+            $source: nvalue.$source,
+          }]
+        }
+        app.handleMessage(plugin.id, delta)
       }
-      app.handleMessage(plugin.id, delta)
     }
   }
 
