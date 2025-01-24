@@ -20,7 +20,7 @@ Customized alarm for specific path & notification state
 <img width="600" alt="Custom Path Configuration" src="https://github.com/user-attachments/assets/3232464b-4594-4447-b201-481dc60d3967" />
 
 
-### API - Muting control of playback
+### API - Control of Playback & Active Notifications
 Active notifications can be silenced (sound removed from method) or resolved (state set to normal) via a simple GET of the following URLs
 
 Silence all active playback (clears sound notification method)
@@ -53,8 +53,8 @@ digital.notificationPlayer.silence  (clear sound method from all active notifica
 digital.notificationPlayer.resolve  (set all active notifications to normal)
 digital.notificationPlayer.disable  (will reset/enable playback after 60min)
 ```
-( Configure path prefix under Plugin Config.  default: digital.notificationPlayer )
-Control of alarm playback via Kip (signalk paths)
+(Set above path prefix under Plugin Config - default: digital.notificationPlayer )
+Example of alarm playback control via the Kip Webapp
 
 <img width="280" alt="Kip Example" src="https://github.com/user-attachments/assets/8c960cf9-0afe-46bc-995f-a078f06c7a0d" />
 
