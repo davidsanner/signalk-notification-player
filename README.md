@@ -35,7 +35,7 @@ Disable all playback for 1 hour (default), max 8hr.
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/disable
 ```
-Disable all playback for 5 minutes (custom)
+Disable all playback for 5 minutes (custom) ( max value 28800 / ie 8hrs )
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/disable?300
 ```
@@ -49,7 +49,9 @@ curl -H 'Cookie: JAUTHENTICATION='$(signalk-generate-token -u pi -e 1y -s ~pi/.s
 
 Silence, Resolve and Disable functions are availble via these corresponding paths which can be set via webapps like Kip's boolean control panel or NodeRed :
 ```
-digital.notificationPlayer.silence, digital.notificationPlayer.resolve, digital.notificationPlayer.disable
+digital.notificationPlayer.silence  (clear sound method from all active notifications)
+digital.notificationPlayer.resolve  (set all active notifications to normal)
+digital.notificationPlayer.disable  (will reset/enable playback after 60min)
 ```
 ( Configure path prefix under Plugin Config.  default: digital.notificationPlayer )
 Control of alarm playback via Kip (signalk paths)
