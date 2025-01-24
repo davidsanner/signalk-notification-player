@@ -55,6 +55,7 @@ module.exports = function(app) {
     }
     if(pluginProps.mappings) pluginProps.mappings.forEach((m) => { if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom })
     if ( !(vesselName=app.getSelfPath('name')) ) vesselName = "Unnamed"
+    if(!pluginProps.playbackControlPrefix) pluginProps.playbackControlPrefix = 'digital.notificationPlayer'
 
     subscribeToNotifications()
     subscribeToHandlers()
@@ -443,6 +444,12 @@ module.exports = function(app) {
           type: 'number',
           default: repeatGapDefault
         },
+        playbackControlPrefix: {
+          type: 'string',
+          title: 'Signal K path prefix for playback control',
+          default: 'digital.notificationPlayer',
+          description: 'Silence and resolve notification via SK paths (eg. digital.notificationPlayer + .silence .resolve .disable)'
+        },
         slackWebhookURL: {
           type: 'string',
           title: 'Slack Webhook URL',
@@ -544,12 +551,12 @@ module.exports = function(app) {
 
   function subscribeToHandlers()
   {
-    app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: false } ] } ] })
-    app.registerPutHandler('vessels.self', 'digital.notificationPlayer.disable', handleDisable);
-    app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.silence', value: false } ] } ] })
-    app.registerPutHandler('vessels.self', 'digital.notificationPlayer.silence', handleSilence);
-    app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.resolve', value: false } ] } ] })
-    app.registerPutHandler('vessels.self', 'digital.notificationPlayer.resolve', handleResolve);
+    app.handleMessage(plugin.id, { updates: [ { values: [ { path: pluginProps.playbackControlPrefix+'.disable', value: false } ] } ] })
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.disable', handleDisable);
+    app.handleMessage(plugin.id, { updates: [ { values: [ { path: pluginProps.playbackControlPrefix+'.silence', value: false } ] } ] })
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.silence', handleSilence);
+    app.handleMessage(plugin.id, { updates: [ { values: [ { path: pluginProps.playbackControlPrefix+'.resolve', value: false } ] } ] })
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.resolve', handleResolve);
     //app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.ignoreLast', value: false } ] } ] })
     //app.registerPutHandler('vessels.self', 'digital.notificationPlayer.ignoreLast', handleIgnoreLast);
   }

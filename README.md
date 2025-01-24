@@ -12,12 +12,12 @@ Example usage: a zone for a elevated coolant or alternator temperature could tri
 
 Initial configuration of each notification state 
 
-<img width="608" alt="SKNP1" src="https://github.com/user-attachments/assets/bfaab30b-7d2d-4430-b093-f8a626d14a59" />
+<img width="608" alt="Alert State Configuration" src="https://github.com/user-attachments/assets/bfaab30b-7d2d-4430-b093-f8a626d14a59" />
 
 
 Customized alarm for specific path & notification state
 
-<img width="600" alt="SKNP2" src="https://github.com/user-attachments/assets/3232464b-4594-4447-b201-481dc60d3967" />
+<img width="600" alt="Custom Path Configuration" src="https://github.com/user-attachments/assets/3232464b-4594-4447-b201-481dc60d3967" />
 
 
 ### API - Muting control of playback
@@ -51,10 +51,10 @@ Silence, Resolve and Disable functions are availble via these corresponding path
 ```
 digital.notificationPlayer.silence, digital.notificationPlayer.resolve, digital.notificationPlayer.disable
 ```
-
+( Configure path prefix under Plugin Config.  default: digital.notificationPlayer )
 Control of alarm playback via Kip (signalk paths)
 
-<img width="280" alt="Kip-SKNP" src="https://github.com/user-attachments/assets/8c960cf9-0afe-46bc-995f-a078f06c7a0d" />
+<img width="280" alt="Kip Example" src="https://github.com/user-attachments/assets/8c960cf9-0afe-46bc-995f-a078f06c7a0d" />
 
 
 ### Background
