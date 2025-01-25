@@ -128,8 +128,7 @@ module.exports = function(app) {
                 alertLog.set(args.path+"."+args.state, { message: args.message, timestamp: eventTimeStamp})
                 app.debug('ADD2Q:'+args.path, args.mode, args.state, 'qSize:'+alertQueue.size)
                 if ( !queueActive && ( !muteUntil || muteUntil <= now() ) ) {  // check for now() is just safety bug catch
-                  queueActive = true
-                  processQueue()  //playEvent(args)
+                  processQueue() 
                 }
                 if ( msgServiceAlert && pluginProps.slackWebhookURL != null) {
                   app.debug("Slack Message:",args.path,args.message)
@@ -186,11 +185,12 @@ module.exports = function(app) {
     if ( notificationPrePost[soundEvent.state] ){
     //if ( soundEvent.mode == 'continuous') {
       if (  queueActive != true && pluginProps.preCommand && pluginProps.preCommand.length > 0 ) { 
+        queueActive = true
         const { exec } = require('node:child_process')
         app.debug('pre-command: %s', pluginProps.preCommand)
         exec(pluginProps.preCommand)
       }
-      queueActive = true
+      else queueActive = true
     }
     if ( (soundEvent.message && soundEvent.played == 2) || (!soundEvent.audioFile && soundEvent.played == 1)){
       if( process.platform === "linux" && !hasFestival ) {
