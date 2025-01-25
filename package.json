@@ -1,6 +1,6 @@
 {
   "name": "signalk-notification-player",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Customizable audio and text to speech playback of Signal K notifications w/ optional Slack integration",
   "main": "index.js",
   "keywords": [
