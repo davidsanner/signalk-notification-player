@@ -1,6 +1,6 @@
 {
   "name": "signalk-notification-player",
-  "version": "1.8.0",
+  "version": "1.9.1",
   "description": "Customizable audio and text to speech playback of Signal K notifications w/ optional Slack integration",
   "main": "index.js",
   "keywords": [
@@ -19,7 +19,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/davidsanner/signalk-notification-player"
+    "url": "git+https://github.com/davidsanner/signalk-notification-player.git"
   },
   "signalk-plugin-enabled-by-default": true,
   "dependencies": {
