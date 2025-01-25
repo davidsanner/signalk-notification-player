@@ -182,16 +182,14 @@ module.exports = function(app) {
     //app.debug("SOUND EVENT:",soundEvent)
     //soundEvent object: path state audioFile message mode played numNotifications
 
-    if ( notificationPrePost[soundEvent.state] ){
-    //if ( soundEvent.mode == 'continuous') {
-      if (  queueActive != true && pluginProps.preCommand && pluginProps.preCommand.length > 0 ) { 
-        queueActive = true
+    if ( notificationPrePost[soundEvent.state] && queueActive != true && pluginProps.preCommand && pluginProps.preCommand.length > 0 ) { 
+        queueActive = true   // quickly block a 2nd notification causing overlap of playback
         const { exec } = require('node:child_process')
         app.debug('pre-command: %s', pluginProps.preCommand)
         exec(pluginProps.preCommand)
-      }
-      else queueActive = true
     }
+    else queueActive = true
+
     if ( (soundEvent.message && soundEvent.played == 2) || (!soundEvent.audioFile && soundEvent.played == 1)){
       if( process.platform === "linux" && !hasFestival ) {
         app.debug('skipping saying:'+soundEvent.message,'mode:'+soundEvent.mode,"played:"+soundEvent.played)
