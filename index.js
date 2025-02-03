@@ -17,7 +17,7 @@ const _ = require('lodash')
 const fs = require('fs')
 const fspath = require('path')
 const child_process = require('child_process')
-const say = require('say');
+const say = require('say')
 const SlackNotify = require('slack-notify')
 
 module.exports = function(app) {
@@ -56,6 +56,8 @@ module.exports = function(app) {
     if(pluginProps.mappings) pluginProps.mappings.forEach((m) => { if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom })
     if ( !(vesselName=app.getSelfPath('name')) ) vesselName = "Unnamed"
     if(!pluginProps.playbackControlPrefix) pluginProps.playbackControlPrefix = 'digital.notificationPlayer'
+
+    //const openapi = require('./openApi.json'); plugin.getOpenApi = () => openapi
 
     subscribeToNotifications()
     subscribeToHandlers()
@@ -126,12 +128,12 @@ module.exports = function(app) {
                 alertQueue.set(nPath, args)
                 lastAlert = args.path+"."+args.state
                 alertLog.set(args.path+"."+args.state, { message: args.message, timestamp: eventTimeStamp})
-                app.debug('ADD2Q:'+args.path, args.mode, args.state, 'qSize:'+alertQueue.size)
+                app.debug('ADD2Q:'+args.path.substring(args.path.indexOf('.')+1), args.mode, args.state, 'qSize:'+alertQueue.size)
                 if ( !queueActive && ( !muteUntil || muteUntil <= now() ) ) {  // check for now() is just safety bug catch
                   processQueue() 
                 }
                 if ( msgServiceAlert && pluginProps.slackWebhookURL != null) {
-                  app.debug("Slack Message:",args.path,args.message)
+                  app.debug("Slack send:",args.path,args.message)
                   SlackNotify(pluginProps.slackWebhookURL).send({
                     channel: pluginProps.slackChannel,
                     text: vesselName+": "+args.message,
@@ -164,8 +166,7 @@ module.exports = function(app) {
     }
   }
     
-  function stopProcessingQueue()
-  {
+  function stopProcessingQueue() {
     //app.debug('stop playing')
     queueActive = false
     if (typeof playPID === 'number') process.kill(playPID)
@@ -176,13 +177,12 @@ module.exports = function(app) {
     } 
   }
 
-  function playEvent(soundEvent)
-  {
+  function playEvent(soundEvent) {
     soundEvent.played++
     //app.debug("SOUND EVENT:",soundEvent)
     //soundEvent object: path state audioFile message mode played numNotifications
 
-    if ( notificationPrePost[soundEvent.state] && queueActive != true && pluginProps.preCommand && pluginProps.preCommand.length > 0 ) { 
+    if ( notificationPrePost[soundEvent.state] != false && queueActive != true && pluginProps.preCommand && pluginProps.preCommand.length > 0 ) { 
         queueActive = true   // quickly block a 2nd notification causing overlap of playback
         const { exec } = require('node:child_process')
         app.debug('pre-command: %s', pluginProps.preCommand)
@@ -228,11 +228,11 @@ module.exports = function(app) {
           playPID = undefined
           app.error('failed to play sound ' + err)
           processQueue()
-        });
+        })
 
         play.on('close', (code) => {
           processQueue()
-        });
+        })
       }
       else {
         app.debug('not playing, sound file missing:'+soundFile)
@@ -284,7 +284,7 @@ module.exports = function(app) {
 
   function now() {  return Math.floor(Date.now()) } 
 
-  function delay(time) { return new Promise(resolve => setTimeout(resolve, time)); }
+  function delay(time) { return new Promise(resolve => setTimeout(resolve, time)) }
 
   plugin.schema = function() {
 
@@ -547,20 +547,18 @@ module.exports = function(app) {
     return schema
   }
 
-  function subscribeToHandlers()
-  {
+  function subscribeToHandlers() {
     app.handleMessage(plugin.id, { updates: [ { values: [ { path: pluginProps.playbackControlPrefix+'.disable', value: false } ] } ] })
-    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.disable', handleDisable);
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.disable', handleDisable)
     app.handleMessage(plugin.id, { updates: [ { values: [ { path: pluginProps.playbackControlPrefix+'.silence', value: false } ] } ] })
-    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.silence', handleSilence);
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.silence', handleSilence)
     app.handleMessage(plugin.id, { updates: [ { values: [ { path: pluginProps.playbackControlPrefix+'.resolve', value: false } ] } ] })
-    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.resolve', handleResolve);
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix+'.resolve', handleResolve)
     //app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.ignoreLast', value: false } ] } ] })
-    //app.registerPutHandler('vessels.self', 'digital.notificationPlayer.ignoreLast', handleIgnoreLast);
+    //app.registerPutHandler('vessels.self', 'digital.notificationPlayer.ignoreLast', handleIgnoreLast)
   }
 
-  function subscribeToNotifications()
-  {
+  function subscribeToNotifications() {
     const command = {
       context: 'vessels.self',
       subscribe: [{
@@ -576,7 +574,7 @@ module.exports = function(app) {
   function silenceNotifications() {
     for (let [key, value] of  alertQueue.entries()) {
       app.debug("Silencing PATH:", key)
-      const nvalue = app.getSelfPath(key);
+      const nvalue = app.getSelfPath(key)
       const nmethod = nvalue.value.method.filter(item => item !== 'sound')
       const delta = {
         updates: [{ 
@@ -647,15 +645,15 @@ module.exports = function(app) {
       app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: false } ] } ] })
       processQueue()
     }
-    return { state: 'COMPLETED', statusCode: 200 };
+    return { state: 'COMPLETED', statusCode: 200 }
   }
   function handleSilence(context, path, value, callback) {
     silenceNotifications()
-    return { state: 'COMPLETED', statusCode: 200 };
+    return { state: 'COMPLETED', statusCode: 200 }
   }
   function handleResolve(context, path, value, callback) {
     resolveNotifications()
-    return { state: 'COMPLETED', statusCode: 200 };
+    return { state: 'COMPLETED', statusCode: 200 }
   }
 /*
   function handleIgnoreLast(context, path, value, callback) {
@@ -665,7 +663,7 @@ module.exports = function(app) {
         alertLog.set(lastAlert, laVal)   // set lastAlert time in the future to silence it until then
         alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf(".")))   // clear active Q entry / any type
       }
-      return { state: 'COMPLETED', statusCode: 200 };
+      return { state: 'COMPLETED', statusCode: 200 }
   }
 */
 
@@ -724,7 +722,7 @@ module.exports = function(app) {
 */
   } // end registerWithRouter()
 
-  return plugin;
+  return plugin
 
 }
 
