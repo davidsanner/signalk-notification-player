@@ -47,9 +47,14 @@ async function processNotification(endpoint) {
   }
 }
 
-function updateMetadata() {
+function updateMetadata(status) {
   const now = new Date()
-  document.getElementById('timestamp').textContent = now.toLocaleTimeString()
+  if( status )
+    document.getElementById('timestamp').textContent = now.toLocaleTimeString()
+  else {
+    const errMsg = document.getElementById('timestamp')
+    errMsg.innerHTML = '<div style="font-size: x-large; color:#F00;">COMMUNICATION ERROR</div>'
+  }
 }
 
 function updateList(data) {
@@ -68,7 +73,7 @@ function updateList(data) {
     const row = document.createElement('tr')
     const bgc = bgColorList[value.state]
     const state = value.state
-    let bgcAge = '#dde5db'
+    let bgAge = 'style="color:#666"'
     pathVal = value.value
     if ( typeof value.value !== "undefined" ) {
       if ( pathVal == 0.000 ) pathVal = 0 
@@ -82,8 +87,8 @@ function updateList(data) {
 
       age = ((Date.now() - new Date(value.timestamp).getTime())/1000)
       age = Math.trunc(age)
-      if ( age > 60 ) bgcAge = bgColorList['warn']
-      else if ( age > 15 ) bgcAge = bgColorList['alert']
+      if ( age > 60 ) bgAge = 'style="color: #cc6060; font-weight: bold;"'
+      else if ( age > 15 ) bgAge = 'style="color: #6d671b; font-weight: bold;"'
       if( age > 7200 ) age = Math.trunc(age/3600)+"h"
       else age = " "+age+"s"
 
@@ -92,7 +97,7 @@ function updateList(data) {
       pathUnits = "n/a"
       age = ' - '
     }
-    row.innerHTML = `<td>${path}</td><td>${pathVal} ${pathUnits}</td><td bgcolor="${bgcAge}">${age}</td><td bgcolor="${bgc}">${state}</td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
+    row.innerHTML = `<td>${path}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td bgcolor="${bgc}">${state}</td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
     table.appendChild(row)
   })
   listContent.appendChild(table)
@@ -110,8 +115,11 @@ async function fetchAndUpdateList() {
     if (listEntries) {
       updateList(data)
     }
+    updateMetadata(true)
   }
-  updateMetadata()
+  else {
+    updateMetadata(false)
+  }
 }
 
 async function fetchVesselName() {
