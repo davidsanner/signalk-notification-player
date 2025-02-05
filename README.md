@@ -12,7 +12,7 @@ A state's notification playback can be configured to repeat continuously (eg. em
 
 Example usage: a zone for a elevated coolant or alternator temperature could trigger a single play/speech event while an overheat zone would send a continuous output/alarm.  A similar setup could be used for depth or battery SOC.  An anchor alarm would be customized to play continously, perhaps with a unique attention grabbing sound alternating with 'Anchor Alarm - Emergency' text to speech.
 
-Initial configuration of each notification state 
+### Initial configuration of each notification state 
 
 <img width="608" alt="Alert State Configuration" src="https://github.com/user-attachments/assets/bfaab30b-7d2d-4430-b093-f8a626d14a59" />
 
@@ -24,6 +24,7 @@ Customized alarm for specific path & notification state
 ### WebApp State Viewer and Control
 
 Companion webapp for viewing all notifications states and their corresponding values.  This page can be easily embedded into Kip for quick state view and playback control/silencing
+<img width="670" alt="sknp" src="https://github.com/user-attachments/assets/7fb06d61-fd6a-4419-af07-7cb9396f8849" />
 
 
 ### API - Control of Playback & Active Notifications
