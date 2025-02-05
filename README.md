@@ -1,4 +1,4 @@
-<img width="128" alt="WebApp" src="public/icon.png" /> Signal K - Notification Player w/ webapp
+<img width="128" alt="WebApp" src="public/icon.png" /> Signal K - Notification Player w/ Webapp
 =================================
 
 This plugin plays user configurable sounds and/or text to speech when a Signal K notification enters emergency/alarm/warn/notice state.
@@ -13,19 +13,16 @@ A state's notification playback can be configured to repeat continuously (eg. em
 Example usage: a zone for a elevated coolant or alternator temperature could trigger a single play/speech event while an overheat zone would send a continuous output/alarm.  A similar setup could be used for depth or battery SOC.  An anchor alarm would be customized to play continously, perhaps with a unique attention grabbing sound alternating with 'Anchor Alarm - Emergency' text to speech.
 
 ### Initial configuration of each notification state 
-
 <img width="608" alt="Alert State Configuration" src="https://github.com/user-attachments/assets/bfaab30b-7d2d-4430-b093-f8a626d14a59" />
 
 
 Customized alarm for specific path & notification state
-
 <img width="600" alt="Custom Path Configuration" src="https://github.com/user-attachments/assets/3232464b-4594-4447-b201-481dc60d3967" />
 
-### WebApp State Viewer and Control
+### WebApp - State Viewer and Control
 
 Companion webapp for viewing all notifications states and their corresponding values.  This page can be easily embedded into Kip for quick state view and playback control/silencing
-<img width="670" alt="sknp" src="https://github.com/user-attachments/assets/7fb06d61-fd6a-4419-af07-7cb9396f8849" />
-
+<img width="670" alt="sknp" src="https://github.com/user-attachments/assets/65783a4e-22bd-4357-908d-f2bddb09e63d" />
 
 ### API - Control of Playback & Active Notifications
 Active notifications can be silenced (sound removed from method) or resolved (state set to normal) via a simple GET of the following URLs
