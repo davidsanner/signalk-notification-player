@@ -6,23 +6,16 @@
   <title>Signalk Notification Player</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <section class="list-top">
     <div id="list-div">
       <br><hr>No notifcations available.  Define zones and notifications under SK Data Browser w/ Meta Data enabled<hr>
     </div>
-  </section>
-
-  <section class="controls-section">
-    <div>
+    <div class="controls-div">
       <a href="/admin/#/serverConfiguration/plugins/signalk-notification-player">Configure Playback Settings</a>&emsp;
       <label for="update-timer">Update(sec):</label>
       <input type="number" id="update-timer" value="2" min="1" size="2">
       Last Updated: <span id="timestamp">-----</span>
     </div>
-  </section>
-
-  <script src="main.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>

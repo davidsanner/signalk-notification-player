@@ -14,12 +14,10 @@ body {
   font-size: 10px;
   text-anchor: middle;
 }
-
-.controls-section {
+.controls-div {
   font-size: 10px;
   text-anchor: middle;
 }
-
 #silenceAll {
   font-size: 16px;
   text-anchor: middle;
@@ -44,14 +42,12 @@ button {
 table {
   border-collapse: collapse;
 }
-
 th {
   text-align: center;
   font-size: 16px;
   border-radius: 11px;
   background-color: #c4c4c4;
 }
-
 td {
   font-size: 11px;
   border: 2px solid #ddd;
@@ -59,11 +55,9 @@ td {
   text-align: left;
   border-radius: 4px;
 }
-
 tr:nth-child(odd) {
   background-color: #f4f4f4;
 }
-
 tr:nth-child(even) {
   background-color: #d4d4d4;
 }
