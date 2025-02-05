@@ -3,7 +3,8 @@ let updateTimer
 const BASE_URL = "/plugins/signalk-notification-player" 
 const NAME_URL = "/signalk/v1/api/vessels/self/name"
 const CONFIG_URL = "/admin/#/serverConfiguration/plugins/signalk-notification-player"
-let craftName = ''
+let vesselName = ''
+let listEntries = 0
 
 async function getJSON(endpoint) {
   try {
@@ -46,7 +47,7 @@ async function processNotification(endpoint) {
   }
 }
 
-function updateMetadata(data) {
+function updateMetadata() {
   const now = new Date()
   document.getElementById('timestamp').textContent = now.toLocaleTimeString()
 }
@@ -59,7 +60,7 @@ function updateList(data) {
 
   const table = document.createElement('table')
   const headerRow = document.createElement('tr')
-  headerRow.innerHTML = '<th>'+craftName+' Notification Path</th><th>Value</th><th style="font-size: x-small">Updated</th><th>State</th><th span=2><button id=silenceAll>Silence All</button></th>'
+  headerRow.innerHTML = '<th>'+vesselName+' Notification Path</th><th>Value</th><th style="font-size: x-small">Updated</th><th>State</th><th span=2><button id=silenceAll>Silence All</button></th>'
   table.appendChild(headerRow)
 
   Object.entries(data).forEach(([path, value]) => {
@@ -105,16 +106,17 @@ function updateList(data) {
 async function fetchAndUpdateList() {
   const data = await getJSON(BASE_URL+'/list') 
   if (data) {
-    updateList(data)
-    updateMetadata(data)
+    if (!listEntries) Object.entries(data).forEach(([path, value]) => { listEntries++ })  // initial check for avail notifications, if none leave default html
+    if (listEntries) {
+      updateList(data)
+    }
   }
+  updateMetadata()
 }
 
-async function fetchCraftName() {
+async function fetchVesselName() {
   const data = await getJSON(NAME_URL) 
-  if (data) {
-    craftName = data
-  }
+  if (data) vesselName = data
 }
 
 function startTimer() {
@@ -141,7 +143,7 @@ document.getElementById('update-timer').addEventListener('input', (event) => {
 
 
 // start up 
-fetchCraftName()
+fetchVesselName()
 fetchAndUpdateList()
 startTimer()
 
