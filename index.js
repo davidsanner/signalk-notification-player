@@ -31,6 +31,7 @@ module.exports = function(app) {
   var pluginProps
   var alertQueue = new Map()
   var alertLog = new Map()
+  var notificationList = new Map()
   var lastAlert = ''
   var playPID
   var queueIndex = 0
@@ -76,6 +77,7 @@ module.exports = function(app) {
         nPath = notifcation.path ; value = notifcation.value
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
+        notificationList.set(nPath, value.state)
 
         if ( value != null && typeof value.state != 'undefined' ) {
           if( typeof value.method != 'undefined' && value.method.indexOf('sound') != -1 ) {
@@ -571,49 +573,53 @@ module.exports = function(app) {
 
 ////
 
-  function silenceNotifications() {
-    for (let [key, value] of  alertQueue.entries()) {
-      app.debug("Silencing PATH:", key)
-      const nvalue = app.getSelfPath(key)
-      const nmethod = nvalue.value.method.filter(item => item !== 'sound')
-      const delta = {
-        updates: [{ 
-          values: [{
-            path: key,
-              value: {
-                state: nvalue.value.state,
-                method: nmethod,
-                message: nvalue.value.message
-             }
-          }], 
-          $source: nvalue.$source,
-        }]
-      }
-      app.handleMessage(plugin.id, delta)
-    }
-  }
-
-  function resolveNotifications() {
-    app.debug("Resolve Notifcations")
-    for (let [key, value] of alertLog.entries()) {  // check log for any alert played including ones silenced (currently not in alertQueue)
-      key = key.substring(0,key.lastIndexOf("."))
-      const nvalue = app.getSelfPath(key)
-      if( nvalue.value.state != 'normal' && nvalue.value.state != 'nominal'  ) { // only clear -> set-to-normal elevated notification states
-        app.debug("Resolve Clearing:", key)
+  function silenceNotifications(path) {
+    for (let [qPath, value] of  alertQueue.entries()) {
+      if ( !path || qPath == path ) {  // if no path silence all/any alertQueue, if path only silence when matching path
+        app.debug("Silencing PATH:", qPath)
+        const nvalue = app.getSelfPath(qPath)
+        const nmethod = nvalue.value.method.filter(item => item !== 'sound')
         const delta = {
           updates: [{ 
             values: [{
-              path: key,
-              value: {
-                state: 'normal',
-                method: nvalue.value.method,
-                message: nvalue.value.message
-              }
+              path: qPath,
+                value: {
+                  state: nvalue.value.state,
+                  method: nmethod,
+                  message: nvalue.value.message
+               }
             }], 
             $source: nvalue.$source,
           }]
         }
         app.handleMessage(plugin.id, delta)
+      }
+    }
+  }
+
+  function resolveNotifications(path) {
+    app.debug("Resolve Notifcations", path)
+    for (let [key, value] of alertLog.entries()) {  // check log for any alert played including ones silenced (currently not in alertQueue)
+      key = key.substring(0,key.lastIndexOf("."))
+      if ( !path || key == path ) {
+        const nvalue = app.getSelfPath(key)
+        if( nvalue.value.state != 'normal' && nvalue.value.state != 'nominal'  ) { // only clear -> set-to-normal elevated notification states
+          app.debug("Resolve Clearing:", key)
+          const delta = {
+            updates: [{ 
+              values: [{
+                path: key,
+                value: {
+                  state: 'normal',
+                  method: nvalue.value.method,
+                  message: nvalue.value.message
+                }
+              }], 
+              $source: nvalue.$source,
+            }]
+          }
+          app.handleMessage(plugin.id, delta)
+        }
       }
     }
   }
@@ -671,11 +677,11 @@ module.exports = function(app) {
 
   plugin.registerWithRouter = (router) => {
     router.get("/silence", (req, res) => {
-      silenceNotifications()
+      silenceNotifications(req._parsedUrl.query)
       res.send("Active Notifications Silenced")
     })
     router.get("/resolve", (req, res) => {
-      resolveNotifications()
+      resolveNotifications(req._parsedUrl.query)
       res.send("Active Notifications Resolved")
     })
     router.get("/disable", (req, res) => {
@@ -699,6 +705,22 @@ module.exports = function(app) {
         }
       })
     })
+    router.get("/list", (req, res) => {
+      const vlist = {}
+      for (let [path, value] of notificationList.entries()) {  
+        const nvalue = app.getSelfPath(path.substring(path.indexOf(".") + 1)) // strip leading notifiction from path
+        const state = notificationList.get(path)
+        const pathValues = {
+              "state": state,
+              "value": nvalue.value,
+              "units": nvalue.meta.units,
+              "timestamp": nvalue.timestamp
+        };
+        vlist[path] = pathValues
+      }
+      res.send(vlist)
+    })
+
 /*
     router.get("/ignoreLast", (req, res) => {
       if(!lastAlert) { res.send("No alerts to mute.") ; return }
