@@ -60,7 +60,7 @@ function updateList(data) {
 
   const table = document.createElement('table')
   const headerRow = document.createElement('tr')
-  headerRow.innerHTML = '<th>'+vesselName+' Notification Path</th><th>Value</th><th style="font-size: x-small">Updated</th><th>State</th><th span=2><button id=silenceAll>Silence All</button></th>'
+  headerRow.innerHTML = '<th>'+vesselName+' : Notification Path</th><th>Value</th><th style="font-size: x-small">Updated</th><th>State</th><th span=2><button id=silenceAll>Silence All</button></th>'
   table.appendChild(headerRow)
 
   Object.entries(data).forEach(([path, value]) => {
