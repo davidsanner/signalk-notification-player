@@ -56,11 +56,11 @@ function updateList(data) {
   const bgColorList = {'emergency': '#ff0000', 'alarm': '#ff5555', 'warn': 'yellow', 'alert': 'olive', 'normal': '#b6c6b0', 'nominal': '#9bb194'}
   const listContent = document.getElementById('list-div')
   let age 
-  listContent.innerHTML = '' // Clear previous content
+  listContent.innerHTML = ''
 
   const table = document.createElement('table')
   const headerRow = document.createElement('tr')
-  headerRow.innerHTML = '<th>'+vesselName+' Notifications</th><th>Value</th><th style="font-size: x-small">Updated</th><th>State</th><th span=2><button id=silenceAll>Silence All</button></th>'
+  headerRow.innerHTML = '<th style="font-size: large">'+vesselName+' Notifications</th><th>Value</th><th>Age<br></th><th>State</th><th span=2><button id=silenceAll>Silence All</button></th>'
   table.appendChild(headerRow)
 
   Object.entries(data).forEach(([path, value]) => {
