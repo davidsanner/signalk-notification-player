@@ -1,8 +1,10 @@
-Signal K plugin for audio notifications
+<img width="128" alt="WebApp" src="public/icon.png" /> Signal K - Notification Player w/ webapp
 =================================
 
 This plugin plays user configurable sounds and/or text to speech when a Signal K notification enters emergency/alarm/warn/notice state.
-Custom notifications can also be sent to user configured slack channel.
+Custom notifications can also be sent to user configured slack channel.  The paired Webapp displays all known/configured notifications as well as 
+controls for silencing and clearing active notification states.
+
 
 The playback options for each state (emergency,alarm,warn,notice) can be configure independently with the option to create custom playback rules for a specific path & state.  Custom commands can be initiated before and after a notification plays (eg. pause music, change volume, flash lights).
 
@@ -18,6 +20,10 @@ Initial configuration of each notification state
 Customized alarm for specific path & notification state
 
 <img width="600" alt="Custom Path Configuration" src="https://github.com/user-attachments/assets/3232464b-4594-4447-b201-481dc60d3967" />
+
+### WebApp State Viewer and Control
+
+Companion webapp for viewing all notifications states and their corresponding values.  This page can be easily embedded into Kip for quick state view and playback control/silencing
 
 
 ### API - Control of Playback & Active Notifications
@@ -35,19 +41,19 @@ Disable all playback for 1 hour (default), max 8hr.
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/disable
 ```
-Disable all playback for 5 minutes (custom) ( max value 28800 / ie 8hrs )
+Custom disable all playback for 5 minutes ( max value 28800 / ie 8hrs )
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/disable?300
 ```
 
-While playback is disabled incoming notifications will still be queued and played in order after on enabled again, however, only the most recent / current notification for a given path will be processed for playback.
+While playback is disabled, incoming notifications will still be queued and played in order, once re-enabled the latest / current notification for a given path will be processed for playback.
 
 Example using authentication data with user pi
 ```
 curl -H 'Cookie: JAUTHENTICATION='$(signalk-generate-token -u pi -e 1y -s ~pi/.signalk/security.json)  http://localhost:3000/plugins/signalk-notification-player/silence
 ```
 
-Silence, Resolve and Disable functions are availble via these corresponding paths which can be set via webapps like Kip's boolean control panel or NodeRed :
+Silence, Resolve and Disable functions are availble via these corresponding paths which can be set via the included webapp, webapps like Kip's boolean control panel or NodeRed :
 ```
 digital.notificationPlayer.silence  (clear sound method from all active notifications)
 digital.notificationPlayer.resolve  (set all active notifications to normal)
@@ -82,14 +88,17 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
+- version 2.0:  
+  - Feature: New companion webapp for viewing all notifications states and their corresponding values 
+  - Feature: webapp silence & resolve functions per notification & silence all button
 - version 1.9:  
-  - Feature add to silence & resolve notifications as well as disable playback (with max timeout reset) accessed via curl/GET
-  - Feature add new SK paths to allow digital switching control of these new silence, resolve & disable features.
-  - Change, when bouncing rate is configure ignore for emergency & alarm states & always play.
+  - Feature: to silence & resolve notifications as well as disable playback (with max timeout reset) accessed via curl/GET
+  - Feature: new SK paths to allow digital switching control of these new silence, resolve & disable features.
+  - Change: ignore bouncing rate configuration for emergency & alarm states - always play.
 - version 1.8:  
-  Slack support added for customize notifications. Update config layout.
+  Feature: Slack support added for customize notifications. Update config layout.
 - version 1.7:  
-  Option to limit notification rate when bouncing in/out of a zone (eg. tank or depth zone)
+  Feature: Option to limit notification rate when bouncing in/out of a zone (eg. tank or depth zone)
 - version 1.5.x:  
   Added custom features for each path, new mellow tritone sound, allow active notification to update if message changes
 
