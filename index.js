@@ -30,7 +30,7 @@ module.exports = function(app) {
   var queueActive = false
   var pluginProps
   var alertQueue = new Map()
-  var alertLog = new Map()
+  var alertLog = {}
   var notificationList = {}
   var lastAlert = ''
   var playPID
@@ -110,7 +110,7 @@ module.exports = function(app) {
                     // and if messages changes && not bouncing/recent (except alarm & emergency)
               if ( ( notice || continuous ) && (!alertQueue.get(nPath) || !alertQueue.get(nPath).state ||
                      alertQueue.get(nPath).state != value.state || alertQueue.get(nPath).message != value.message) 
-                    && (!alertLog.get(nPath+"."+value.state) || (alertLog.get(nPath+"."+value.state).timestamp + (repeatGap * 1000)) < eventTimeStamp ||
+                    && (!alertLog[nPath+"."+value.state] || (alertLog[nPath+"."+value.state].timestamp + (repeatGap * 1000)) < eventTimeStamp ||
                          value.state == 'emergency' || value.state == 'alarm') ) {
                 let args = Object.create(soundEvent)
                 args.audioFile = audioFile
@@ -129,7 +129,7 @@ module.exports = function(app) {
 
                 alertQueue.set(nPath, args)
                 lastAlert = args.path+"."+args.state
-                alertLog.set(args.path+"."+args.state, { message: args.message, timestamp: eventTimeStamp})
+                alertLog[args.path+"."+args.state] = { message: args.message, timestamp: eventTimeStamp}
                 app.debug('ADD2Q:'+args.path.substring(args.path.indexOf('.')+1), args.mode, args.state, 'qSize:'+alertQueue.size)
                 if ( !queueActive && ( !muteUntil || muteUntil <= now() ) ) {  // check for now() is just safety bug catch
                   processQueue() 
@@ -599,7 +599,7 @@ module.exports = function(app) {
 
   function resolveNotifications(path) {
     app.debug("Resolve Notifcations", path)
-    for (let [key, value] of alertLog.entries()) {  // check log for any alert played including ones silenced (currently not in alertQueue)
+    Object.entries(alertLog).forEach(([key, value]) => { // check log for any alert played including ones silenced (currently not in alertQueue)
       key = key.substring(0,key.lastIndexOf("."))
       if ( !path || key == path ) {
         const nvalue = app.getSelfPath(key)
@@ -621,7 +621,7 @@ module.exports = function(app) {
           app.handleMessage(plugin.id, delta)
         }
       }
-    }
+    })
   }
 
 ////
@@ -664,9 +664,9 @@ module.exports = function(app) {
 /*
   function handleIgnoreLast(context, path, value, callback) {
       if(!lastAlert) { return { state: 'COMPLETED', statusCode: 200 } }
-      if( laVal = alertLog.get(lastAlert) ) {
+      if( laVal = alertLog[lastAlert] ) {
         laVal.timestamp = now() + ( 1200 * 1000 )   // 20 minutes
-        alertLog.set(lastAlert, laVal)   // set lastAlert time in the future to silence it until then
+        alertLog[lastAlert] = laVal   // set lastAlert time in the future to silence it until then
         alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf(".")))   // clear active Q entry / any type
       }
       return { state: 'COMPLETED', statusCode: 200 }
@@ -733,9 +733,9 @@ module.exports = function(app) {
       } else {
         res.send("Muting "+lastAlert+ " playback for "+muteTime+" seconds")
       }
-      if( laVal = alertLog.get(lastAlert) ) {
+      if( laVal = alertLog[lastAlert] ) {
         laVal.timestamp = now() + ( muteTime * 1000 )
-        alertLog.set(lastAlert, laVal)   // set lastAlert time in the future to silence it until then
+        alertLog[lastAlert] = laVal   // set lastAlert time in the future to silence it until then
         alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf(".")))   // clear active Q entry / any type
       }
       app.debug("Muting PB for", lastAlert, "next", muteTime, "seconds")
