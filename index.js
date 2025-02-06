@@ -31,7 +31,7 @@ module.exports = function(app) {
   var pluginProps
   var alertQueue = new Map()
   var alertLog = new Map()
-  var notificationList = new Map()
+  var notificationList = {}
   var lastAlert = ''
   var playPID
   var queueIndex = 0
@@ -77,7 +77,7 @@ module.exports = function(app) {
         nPath = notifcation.path ; value = notifcation.value
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
-        notificationList.set(nPath, value.state)
+        notificationList[nPath] =  value.state
 
         if ( value != null && typeof value.state != 'undefined' ) {
           if( typeof value.method != 'undefined' && value.method.indexOf('sound') != -1 ) {
@@ -707,9 +707,9 @@ module.exports = function(app) {
     })
     router.get("/list", (req, res) => {
       const vlist = {}
-      for (let [path, value] of notificationList.entries()) {  
+      for (const path in notificationList) {
         const nvalue = app.getSelfPath(path.substring(path.indexOf(".") + 1)) // strip leading notifiction from path
-        const state = notificationList.get(path)
+        const state = notificationList[path]
         const pathValues = {
               "state": state,
               "value": nvalue.value,
