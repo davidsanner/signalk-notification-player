@@ -707,6 +707,7 @@ module.exports = function(app) {
     })
     router.get("/list", (req, res) => {
       const vlist = {}
+      notificationList = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
       for (const path in notificationList) {
         const nvalue = app.getSelfPath(path.substring(path.indexOf(".") + 1)) // strip leading notifiction from path
         const state = notificationList[path]

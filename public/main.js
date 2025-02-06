@@ -87,8 +87,8 @@ function updateList(data) {
 
       age = ((Date.now() - new Date(value.timestamp).getTime())/1000)
       age = Math.trunc(age)
-      if ( age > 60 ) bgAge = 'style="color: #cc6060; font-weight: bold;"'
-      else if ( age > 15 ) bgAge = 'style="color: #6d671b; font-weight: bold;"'
+      if ( age > 60 ) bgAge = 'style="color: #C04000; font-weight: bold;"'
+      else if ( age > 15 ) bgAge = 'style="color: #7E3817; font-weight: bold;"'
       if( age > 7200 ) age = Math.trunc(age/3600)+"h"
       else age = " "+age+"s"
 
