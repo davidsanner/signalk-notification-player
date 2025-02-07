@@ -81,30 +81,30 @@ function updateList(data) {
     const state = value.state
     let bgAge = 'style="color:#666"'
     pathTrimmed = path.substring(path.indexOf(".") + 1);
-    pathVal = value.value
     if ( typeof value.value !== "undefined" ) {
-      if ( pathVal == 0.000 ) pathVal = 0 
+      pathVal = value.value
       pathUnits = value.units
-      if (pathUnits == 'K') {
-        pathUnits = 'C'
-        pathVal = pathVal - 273.15
-      }
-
-      if( !pathUnits ) pathUnits = ''
-
-      if( !pathVal ) {
+      if(pathVal == null) {
         pathVal = 'n/a'
-        age = '-'
+        pathUnits = ''
       }
       else {
+        if( !pathUnits ) pathUnits = ''
+        else if (pathUnits == 'K') {
+          pathUnits = 'C'
+          pathVal = pathVal - 273.15
+        }
         pathVal = pathVal.toPrecision(3)
-        age = ((Date.now() - new Date(value.timestamp).getTime())/1000)
-        age = Math.trunc(age)
-        if ( age > 60 ) bgAge = 'style="color: #C04000; font-weight: bold;"'
-        else if ( age > 15 ) bgAge = 'style="color: #7E3817; font-weight: bold;"'
-        if( age > 7200 ) age = Math.trunc(age/3600)+"h"
-        else age = " "+age+"s"
+        if ( pathVal == 0.000 ) pathVal = 0 
+        else if ( pathVal == 1.000 ) pathVal = 1 
       }
+
+      age = ((Date.now() - new Date(value.timestamp).getTime())/1000)
+      age = Math.trunc(age)
+      if ( age > 60 ) bgAge = 'style="color: #C04000; font-weight: bold;"'
+      else if ( age > 15 ) bgAge = 'style="color: #7E3817; font-weight: bold;"'
+      if( age > 7200 ) age = Math.trunc(age/3600)+"h"
+      else age = " "+age+"s"
 
     } else { 
       pathVal = "error"
