@@ -24,6 +24,10 @@ Customized alarm for specific path & notification state
 Companion webapp for viewing all notifications states and their corresponding values.  This page can be easily embedded into Kip for quick state view and playback control/silencing
 <img width="670" alt="sknp" src="https://github.com/user-attachments/assets/65783a4e-22bd-4357-908d-f2bddb09e63d" />
 
+Mouse over any path to view its notifcation zones and type  
+<img width="632" alt="sknp-zones" src="https://github.com/user-attachments/assets/6db5e5fd-825d-459c-a47b-e09435050aad" />
+
+
 ### API - Control of Playback & Active Notifications
 Active notifications can be silenced (sound removed from method) or resolved (state set to normal) via a simple GET of the following URLs
 
@@ -43,7 +47,10 @@ Custom disable all playback for 5 minutes ( max value 28800 / ie 8hrs )
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/disable?300
 ```
-
+List all known notifcation states & associated value (json)
+```
+curl http://localhost:3000/plugins/signalk-notification-player/list
+```
 While playback is disabled, incoming notifications will still be queued and played in order, once re-enabled the latest / current notification for a given path will be processed for playback.
 
 Example using authentication data with user pi
