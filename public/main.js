@@ -90,14 +90,14 @@ function updateList(data) {
         pathVal = pathVal - 273.15
       }
 
-      if( !pathUnits || !pathVal) {
-        pathUnits = ''
+      if( !pathUnits ) pathUnits = ''
+
+      if( !pathVal ) {
         pathVal = 'n/a'
         age = '-'
       }
       else {
         pathVal = pathVal.toPrecision(3)
-
         age = ((Date.now() - new Date(value.timestamp).getTime())/1000)
         age = Math.trunc(age)
         if ( age > 60 ) bgAge = 'style="color: #C04000; font-weight: bold;"'
