@@ -709,7 +709,11 @@ module.exports = function(app) {
       const vlist = {}
       notificationList = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
       for (const path in notificationList) {
-        const nvalue = app.getSelfPath(path.substring(path.indexOf(".") + 1)) // strip leading notifiction from path
+        if (path.startsWith('notifications.navigation.anchor')) {
+          nvalue = app.getSelfPath(path.substring(path.indexOf(".") + 1)+'.distanceFromBow') // anchor watch api path
+        } else {
+          nvalue = app.getSelfPath(path.substring(path.indexOf(".") + 1)) // strip leading notifiction from typical path
+        }
         const state = notificationList[path]
         const pathValues = {
               "state": state,

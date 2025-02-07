@@ -61,3 +61,13 @@ tr:nth-child(odd) {
 tr:nth-child(even) {
   background-color: #d4d4d4;
 }
+
+.popupContainer {
+  display: none;
+  position: relative;
+  background-color: #EDEFED;
+  border: 4px solid #888;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 10px;
+}

@@ -1,10 +1,15 @@
+//
+//  signalk-notifcation-player webapp
+//
+const BASE_URL = "/plugins/signalk-notification-player" 
+const SELF_URL = "/signalk/v1/api/vessels/self"
+const CONFIG_URL = "/admin/#/serverConfiguration/plugins/signalk-notification-player"
+let popupActive = false  // keep popup data from reloading when main table reloads
+let vesselName = ''
+let zones = ''
+let listEntries = 0
 let updateInterval = 2
 let updateTimer
-const BASE_URL = "/plugins/signalk-notification-player" 
-const NAME_URL = "/signalk/v1/api/vessels/self/name"
-const CONFIG_URL = "/admin/#/serverConfiguration/plugins/signalk-notification-player"
-let vesselName = ''
-let listEntries = 0
 
 async function getJSON(endpoint) {
   try {
@@ -84,32 +89,70 @@ function updateList(data) {
         pathUnits = 'C'
         pathVal = pathVal - 273.15
       }
-      pathVal = pathVal.toPrecision(3)
-      if( !pathUnits ) pathUnits = ''
 
-      age = ((Date.now() - new Date(value.timestamp).getTime())/1000)
-      age = Math.trunc(age)
-      if ( age > 60 ) bgAge = 'style="color: #C04000; font-weight: bold;"'
-      else if ( age > 15 ) bgAge = 'style="color: #7E3817; font-weight: bold;"'
-      if( age > 7200 ) age = Math.trunc(age/3600)+"h"
-      else age = " "+age+"s"
+      if( !pathUnits || !pathVal) {
+        pathUnits = ''
+        pathVal = 'n/a'
+        age = '-'
+      }
+      else {
+        pathVal = pathVal.toPrecision(3)
 
-    } else {
-      pathVal = ""
-      pathUnits = "n/a"
+        age = ((Date.now() - new Date(value.timestamp).getTime())/1000)
+        age = Math.trunc(age)
+        if ( age > 60 ) bgAge = 'style="color: #C04000; font-weight: bold;"'
+        else if ( age > 15 ) bgAge = 'style="color: #7E3817; font-weight: bold;"'
+        if( age > 7200 ) age = Math.trunc(age/3600)+"h"
+        else age = " "+age+"s"
+      }
+
+    } else { 
+      pathVal = "error"
+      pathUnits = ""
       age = '-'
     }
-    row.innerHTML = `<td>${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td bgcolor="${bgc}">${state}</td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
+
+    row.innerHTML = `<td id="${pathTrimmed}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td bgcolor="${bgc}">${state}</td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
     table.appendChild(row)
   })
   listContent.appendChild(table)
 
   Object.entries(data).forEach(([path, value]) => {
+    pathTrimmed = path.substring(path.indexOf(".") + 1);
     if(document.getElementById(`${path}-resolve`)) document.getElementById(`${path}-resolve`).addEventListener('click', processResolve)
     if(document.getElementById(`${path}-silence`)) document.getElementById(`${path}-silence`).addEventListener('click', processSilence)
+    document.getElementById(pathTrimmed).addEventListener('mouseout', function(){document.getElementById('popupContent').style.display = 'none'; popupActive = false ; startTimer(.01)})
+    if(!popupActive) {
+    document.getElementById(pathTrimmed).addEventListener('mouseover', processMouseOver)
+    }
   })
   document.getElementById(`silenceAll`).addEventListener('click', processSilence)
 }
+
+function processMouseOver(event) {
+  popupActive = true
+  if (event.target.id.includes("navigation.anchor"))
+    zonePath = SELF_URL+"/"+event.target.id.replaceAll('.', '/')+"/meta/value/zones"  // anchor api had different path?
+  else
+    zonePath = SELF_URL+"/"+event.target.id.replaceAll('.', '/')+"/meta/zones"
+  fetch(zonePath)
+    .then(response => response.text())
+    .then(text => {
+      console.log(event.target.id)
+// /signalk/v1/api/vessels/self/navigation/anchor/meta/zones
+      text = text.replaceAll('},{','},<hr>{')
+      if(text.includes('Cannot GET ')) document.getElementById('zones').innerHTML = '---'
+      else document.getElementById('zones').innerHTML = text
+    })
+    .catch(error => {
+      //console.error('Error:', error);
+    });
+
+  document.getElementById('popupContent').innerHTML = 'Zone MetaData for:&nbsp;<div style="display:inline; font-size: medium; color:#800;">'+event.target.id+'</div><hr><div id=zones>loading zones...</div>'
+  document.getElementById('popupContent').style.display = 'block';
+  startTimer()
+}
+
 async function fetchAndUpdateList() {
   const data = await getJSON(BASE_URL+'/list') 
   if (data) {
@@ -125,13 +168,14 @@ async function fetchAndUpdateList() {
 }
 
 async function fetchVesselName() {
-  const data = await getJSON(NAME_URL) 
+  const data = await getJSON(SELF_URL+"/name") 
   if (data) vesselName = data+" :"
 }
 
-function startTimer() {
+function startTimer(multiple) {
+  if(!multiple) multiple = 1
   if (updateTimer) clearInterval(updateTimer)
-  updateTimer = setInterval(fetchAndUpdateList, updateInterval * 1000)
+  updateTimer = setInterval(fetchAndUpdateList, updateInterval * 1000 * multiple)
 }
 
 function processResolve(event) {
