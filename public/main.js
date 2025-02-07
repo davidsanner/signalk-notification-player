@@ -52,7 +52,7 @@ async function processNotification(endpoint) {
   }
 }
 
-function updateMetadata(status) {
+function updateTimeStamp(status) {
   const now = new Date()
   if( status )
     document.getElementById('timestamp').textContent = now.toLocaleTimeString()
@@ -121,7 +121,7 @@ function updateList(data) {
     pathTrimmed = path.substring(path.indexOf(".") + 1);
     if(document.getElementById(`${path}-resolve`)) document.getElementById(`${path}-resolve`).addEventListener('click', processResolve)
     if(document.getElementById(`${path}-silence`)) document.getElementById(`${path}-silence`).addEventListener('click', processSilence)
-    document.getElementById(pathTrimmed).addEventListener('mouseout', function(){document.getElementById('popupContent').style.display = 'none'; popupActive = false ; startTimer(.01)})
+    document.getElementById(pathTrimmed).addEventListener('mouseout', function(){document.getElementById('popupContent').style.display = 'none'; popupActive = false ; fetchAndUpdateList()})
     if(!popupActive) {
     document.getElementById(pathTrimmed).addEventListener('mouseover', processMouseOver)
     }
@@ -132,15 +132,14 @@ function updateList(data) {
 function processMouseOver(event) {
   popupActive = true
   if (event.target.id.includes("navigation.anchor"))
-    zonePath = SELF_URL+"/"+event.target.id.replaceAll('.', '/')+"/meta/value/zones"  // anchor api had different path?
+    zonePath = SELF_URL+"/"+event.target.id.replaceAll('.', '/')+"/meta/value/zones"  // support for anchor api w/ different path?
   else
     zonePath = SELF_URL+"/"+event.target.id.replaceAll('.', '/')+"/meta/zones"
   fetch(zonePath)
     .then(response => response.text())
     .then(text => {
-      console.log(event.target.id)
-// /signalk/v1/api/vessels/self/navigation/anchor/meta/zones
-      text = text.replaceAll('},{','},<hr>{')
+      text = text.replaceAll('},{','}<hr>{')
+      text = text.replace(/[\[\]]/g, "")
       if(text.includes('Cannot GET ')) document.getElementById('zones').innerHTML = '---'
       else document.getElementById('zones').innerHTML = text
     })
@@ -150,32 +149,24 @@ function processMouseOver(event) {
 
   document.getElementById('popupContent').innerHTML = 'Zone MetaData for:&nbsp;<div style="display:inline; font-size: medium; color:#800;">'+event.target.id+'</div><hr><div id=zones>loading zones...</div>'
   document.getElementById('popupContent').style.display = 'block';
-  startTimer()
 }
 
 async function fetchAndUpdateList() {
   const data = await getJSON(BASE_URL+'/list') 
   if (data) {
-    if (!listEntries) Object.entries(data).forEach(([path, value]) => { listEntries++ })  // initial check for avail notifications, if none leave default html
+    if (!listEntries) Object.entries(data).forEach(([path, value]) => { listEntries++ }) 
     if (listEntries) {
       updateList(data)
     }
-    updateMetadata(true)
+    updateTimeStamp(true)
   }
-  else {
-    updateMetadata(false)
-  }
+  else
+    updateTimeStamp(false)
 }
 
 async function fetchVesselName() {
   const data = await getJSON(SELF_URL+"/name") 
   if (data) vesselName = data+" :"
-}
-
-function startTimer(multiple) {
-  if(!multiple) multiple = 1
-  if (updateTimer) clearInterval(updateTimer)
-  updateTimer = setInterval(fetchAndUpdateList, updateInterval * 1000 * multiple)
 }
 
 function processResolve(event) {
@@ -195,9 +186,13 @@ document.getElementById('update-timer').addEventListener('input', (event) => {
   startTimer()
 })
 
+function startTimer() {
+  if (updateTimer) clearInterval(updateTimer)
+  updateTimer = setInterval(fetchAndUpdateList, updateInterval * 1000)
+}
 
 // start up 
 fetchVesselName()
-fetchAndUpdateList()
+fetchAndUpdateList() 
 startTimer()
 
