@@ -22,7 +22,8 @@ Customized alarm for specific path & notification state
 ### WebApp - State Viewer and Control
 
 Companion webapp for viewing all notifications states and their corresponding values.  This page can be easily embedded into Kip for quick state view and playback control/silencing  
-<img width="706" alt="snkp" src="https://github.com/user-attachments/assets/a58326f5-f17e-4f0f-9228-8aabdce91926" />
+<img width="706" alt="snkp-zone2" src="https://github.com/user-attachments/assets/2c923776-53c9-47e4-bc8b-4ef64cc31bcc" />
+
 
 Mouse over any path to view its notifcation zones and type  
 <img width="623" alt="sknp-zones" src="https://github.com/user-attachments/assets/16cebb46-a2d7-4827-822a-772b28e7d32a" />
