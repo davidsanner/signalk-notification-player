@@ -88,11 +88,14 @@ function updateList(data) {
         pathVal = 'n/a'
         pathUnits = ''
       }
+      else if (pathVal == true || pathVal == false){
+        pathUnits = ''
+      }
       else {
         if( !pathUnits ) pathUnits = ''
         else if (pathUnits == 'K') {
-          pathUnits = 'C'
-          pathVal = pathVal - 273.15
+            pathUnits = 'C'
+            pathVal = pathVal - 273.15
         }
         pathVal = pathVal.toPrecision(3)
         if ( pathVal == 0.000 ) pathVal = 0 
