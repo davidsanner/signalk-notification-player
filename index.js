@@ -59,6 +59,10 @@ module.exports = function(app) {
     if(!pluginProps.playbackControlPrefix) pluginProps.playbackControlPrefix = 'digital.notificationPlayer'
 
     //const openapi = require('./openApi.json'); plugin.getOpenApi = () => openapi
+    /*findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {   // preload notificationList
+       //app.debug("PV", 'notifications.'+update.path.substring(0, update.path.lastIndexOf(".")), update.value.state)
+       if(update.value.state) notificationList['notifications.'+update.path.substring(0, update.path.lastIndexOf("."))] = update.value.state
+    }) */
 
     subscribeToNotifications()
     subscribeToHandlers()
@@ -77,7 +81,7 @@ module.exports = function(app) {
         nPath = notifcation.path ; value = notifcation.value
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
-        notificationList[nPath] =  value.state
+        //notificationList[nPath] =  value.state
 
         if ( value != null && typeof value.state != 'undefined' ) {
           if( typeof value.method != 'undefined' && value.method.indexOf('sound') != -1 ) {
@@ -287,6 +291,27 @@ module.exports = function(app) {
   function now() {  return Math.floor(Date.now()) } 
 
   function delay(time) { return new Promise(resolve => setTimeout(resolve, time)) }
+
+  function findObjectsEndingWith(obj, ending) {
+    const results = [];
+  
+    function traverse(current, path = '') {
+      for (const key in current) {
+        if (current.hasOwnProperty(key)) {
+          const newPath = path ? `${path}.${key}` : key;
+          if (key.endsWith(ending)) {
+            results.push({ path: newPath, value: current[key] });
+          }
+          if (typeof current[key] === 'object' && current[key] !== null) {
+            traverse(current[key], newPath);
+          }
+        }
+      }
+    }
+  
+    traverse(obj);
+    return results;
+  }
 
   plugin.schema = function() {
 
@@ -706,6 +731,9 @@ module.exports = function(app) {
       })
     })
     router.get("/list", (req, res) => {
+      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {   // load notification values
+         if(update.value.state) notificationList['notifications.'+update.path.substring(0, update.path.lastIndexOf("."))] = update.value.state
+      })
       const vlist = {}
       notificationList = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
       for (const path in notificationList) {
@@ -715,13 +743,15 @@ module.exports = function(app) {
           nvalue = app.getSelfPath(path.substring(path.indexOf(".") + 1)) // strip leading notifiction from typical path
         }
         const state = notificationList[path]
-        const pathValues = {
-              "state": state,
-              "value": nvalue.value,
-              "units": nvalue.meta.units,
-              "timestamp": nvalue.timestamp
-        };
-        vlist[path] = pathValues
+        if( nvalue ) {
+          const pathValues = {
+                "state": state,
+                "value": nvalue.value,
+                "units": nvalue.meta.units,
+                "timestamp": nvalue.timestamp
+          };
+          vlist[path] = pathValues
+        }
       }
       res.send(vlist)
     })
