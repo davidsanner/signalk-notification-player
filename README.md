@@ -95,6 +95,8 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
+- version 2.0.1:  
+  - Fix: issue with instant notification subscription missing notifications at startup, get notifications manually for webapp
 - version 2.0:  
   - Feature: New companion webapp for viewing all notifications states and their corresponding values 
   - Feature: webapp silence & resolve functions per notification & silence all button
