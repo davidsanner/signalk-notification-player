@@ -8,10 +8,12 @@
 </head>
 <body>
     <p></p>
+    <div id="overlay"></div>
     <div id="list-div">
       <br><hr><div style="font-size: x-large;">Loading notifications... </div><div style="font-size: small;">If no notifcations available define zones under SK Data Browser w/ Meta Data enabled</div><hr>
     </div>
     <div class="controls-div">
+      <input id=playbackDisabled type="checkbox"> Playback Disabled (clears in 60 min) &emsp;
       <a href="/admin/#/serverConfiguration/plugins/signalk-notification-player">Configure Playback Settings</a>&emsp;
       <label for="update-timer">Update(sec):</label>
       <input type="number" id="update-timer" value="2" min="1" size="1">

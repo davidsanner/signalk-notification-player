@@ -10,6 +10,8 @@ let zones = ''
 let listEntries = 0
 let updateInterval = 2
 let updateTimer
+let updateDisable = false
+let playbackControlPath = ''
 
 async function getJSON(endpoint) {
   try {
@@ -67,6 +69,18 @@ function updateList(data) {
   const listContent = document.getElementById('list-div')
   let age 
   listContent.innerHTML = ''
+
+  statusElement = document.getElementById('overlay')
+  if(updateDisable == true) {
+    listContent.style.opacity = '.5'
+    statusElement.style.display = 'flex'
+    statusElement.textContent = 'Notification Playback Disabled'
+    document.getElementById('playbackDisabled').checked = true
+  }
+  else {
+    listContent.style.opacity = '1'
+    statusElement.style.display = 'none'
+  }
 
   const table = document.createElement('table')
   const headerRow = document.createElement('tr')
@@ -130,6 +144,8 @@ function updateList(data) {
     }
   })
   document.getElementById(`silenceAll`).addEventListener('click', processSilence)
+  document.getElementById('playbackDisabled').addEventListener('click', processDisable)
+  document.getElementById('playbackDisabled').checked = updateDisable
 }
 
 function processMouseOver(event) {
@@ -155,6 +171,7 @@ function processMouseOver(event) {
 }
 
 async function fetchAndUpdateList() {
+  fetchStatus()
   const data = await getJSON(BASE_URL+'/list') 
   if (data) {
     if (!listEntries) Object.entries(data).forEach(([path, value]) => { listEntries++ }) 
@@ -172,6 +189,31 @@ async function fetchVesselName() {
   if (data) vesselName = data+" :"
 }
 
+async function fetchStatus() {
+  if(playbackControlPath == ''){   // 1st time through get playbackControlPrefix from plugin config
+    try {
+      const res1 = await fetch(BASE_URL+'/disable?-1');
+      const urlpath = await res1.json();
+
+      playbackControlPath = SELF_URL+'/'+urlpath.replaceAll(".", "/")+"/disable"
+      const res2 = await fetch(playbackControlPath);
+
+      updateDisable = (await res2.json()).value
+
+    } catch (error) {
+      console.error("Fetching error:", error);
+    }
+  }
+  else {
+    try {
+      const res2 = await fetch(playbackControlPath)
+      updateDisable = (await res2.json()).value
+    } catch (error) {
+      console.error("Fetching error:", error);
+    }
+  }
+}
+
 function processResolve(event) {
    processNotification(BASE_URL+'/resolve?'+event.target.id.split('-')[0])
    fetchAndUpdateList()
@@ -182,6 +224,18 @@ function processSilence(event) {
      processNotification(BASE_URL+'/silence')
    else
      processNotification(BASE_URL+'/silence?'+event.target.id.split('-')[0])
+}
+
+function processDisable(event) {
+   if(event.explicitOriginalTarget.checked) {
+     updateDisable=true
+     processNotification(BASE_URL+'/disable')
+   }
+   else {
+     updateDisable=false
+     processNotification(BASE_URL+'/disable?0')
+   }
+   fetchAndUpdateList()
 }
 
 document.getElementById('update-timer').addEventListener('input', (event) => {
@@ -195,7 +249,7 @@ function startTimer() {
 }
 
 // start up 
+fetchStatus()
 fetchVesselName()
 fetchAndUpdateList() 
 startTimer()
-
