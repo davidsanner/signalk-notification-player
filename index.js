@@ -19,6 +19,7 @@ const fspath = require('path')
 const child_process = require('child_process')
 const say = require('say')
 const SlackNotify = require('slack-notify')
+const maxDisable = 3600 // max disable time in seconds
 
 module.exports = function(app) {
   var plugin = {}
@@ -59,13 +60,16 @@ module.exports = function(app) {
     if(!pluginProps.playbackControlPrefix) pluginProps.playbackControlPrefix = 'digital.notificationPlayer'
 
     //const openapi = require('./openApi.json'); plugin.getOpenApi = () => openapi
-    /*findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {   // preload notificationList
-       //app.debug("PV", 'notifications.'+update.path.substring(0, update.path.lastIndexOf(".")), update.value.state)
-       if(update.value.state) notificationList['notifications.'+update.path.substring(0, update.path.lastIndexOf("."))] = update.value.state
-    }) */
-
     subscribeToNotifications()
+    delay( 4000 ).then(() => {  // also startup of SK so wait for things to settle and then check we did't miss any notifications
+      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {   // load notificationList
+         update.path = 'notifications.'+update.path
+         processNotifications({"updates": [{"values": [update]}]})
+      })
+
+    })
     subscribeToHandlers()
+
   }
   plugin.stop = function() {
     unsubscribes.forEach(function(func) { func() })
@@ -81,7 +85,7 @@ module.exports = function(app) {
         nPath = notifcation.path ; value = notifcation.value
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value 
-        //notificationList[nPath] =  value.state
+        notificationList[nPath] =  value.state
 
         if ( value != null && typeof value.state != 'undefined' ) {
           if( typeof value.method != 'undefined' && value.method.indexOf('sound') != -1 ) {
@@ -109,7 +113,10 @@ module.exports = function(app) {
                   notice=true
               }
 
-              let eventTimeStamp = new Date(update.timestamp).getTime()
+              if(update.timestamp)
+                eventTimeStamp = new Date(update.timestamp).getTime()
+              else
+                eventTimeStamp = now()
                     // Has notification type, otherwise delete from Q and only add if new path entry or if changing existing path's state (eg. alarm to alert) 
                     // and if messages changes && not bouncing/recent (except alarm & emergency)
               if ( ( notice || continuous ) && (!alertQueue.get(nPath) || !alertQueue.get(nPath).state ||
@@ -298,8 +305,9 @@ module.exports = function(app) {
     function traverse(current, path = '') {
       for (const key in current) {
         if (current.hasOwnProperty(key)) {
-          const newPath = path ? `${path}.${key}` : key;
+          let newPath = path ? `${path}.${key}` : key;
           if (key.endsWith(ending)) {
+            newPath = newPath.substring(0, newPath.lastIndexOf(".")) // strip final ending
             results.push({ path: newPath, value: current[key] });
           }
           if (typeof current[key] === 'object' && current[key] !== null) {
@@ -599,15 +607,14 @@ module.exports = function(app) {
 ////
 
   function silenceNotifications(path) {
-    for (let [qPath, value] of  alertQueue.entries()) {
-      if ( !path || qPath == path ) {  // if no path silence all/any alertQueue, if path only silence when matching path
-        app.debug("Silencing PATH:", qPath)
-        const nvalue = app.getSelfPath(qPath)
+    if(path) {
+        app.debug("Silencing PATH:", path)
+        const nvalue = app.getSelfPath(path)
         const nmethod = nvalue.value.method.filter(item => item !== 'sound')
         const delta = {
           updates: [{ 
             values: [{
-              path: qPath,
+              path: path,
                 value: {
                   state: nvalue.value.state,
                   method: nmethod,
@@ -618,7 +625,32 @@ module.exports = function(app) {
           }]
         }
         app.handleMessage(plugin.id, delta)
-      }
+    }  
+    else {
+      //  Perhaps traverse all "notifications" instead of alertQueue????
+      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {   // load notificationList
+        path = 'notifications.'+update.path
+      //for (let [path, value] of  alertQueue.entries()) {  // silence all/any alertQueue
+        const nvalue = app.getSelfPath(path)
+        if(nvalue.value.state != 'normal'){
+          app.debug("Silencing PATH:", path)
+          const nmethod = nvalue.value.method.filter(item => item !== 'sound')
+          const delta = {
+            updates: [{ 
+              values: [{
+                path: path,
+                  value: {
+                    state: nvalue.value.state,
+                    method: nmethod,
+                    message: nvalue.value.message
+                 }
+              }], 
+              $source: nvalue.$source,
+            }]
+          }
+          app.handleMessage(plugin.id, delta)
+        }
+      })
     }
   }
 
@@ -655,13 +687,13 @@ module.exports = function(app) {
     //app.debug("handleDisable", context, path, value)
     if( value == true ) {
       //if( muteUntil == 0 )
-      if((muteUntil - (3600 * 1000)) < ( now() - 1000 )) {  // bounce check, accept at max 1hz rate
-        muteUntil = now() + (3600 * 1000)  // 1hr max
+      if((muteUntil - (maxDisable * 1000)) < ( now() - 1000 )) {  // bounce check, accept at max 1hz rate
+        muteUntil = now() + (maxDisable * 1000)  // 1hr max
         app.debug("Disabling in handleDisable", value)
         app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: value } ] } ] })
         //muteUntil = now() + (300 * 1000)   // 5 minutes
   
-        delay( 3600 * 1000 ).then(() => {
+        delay( maxDisable * 1000 ).then(() => {
           if ( muteUntil <= now() &&  muteUntil != 0 ) {  // check if later timer set and if not already cleared
             app.debug("Enabling in handleDisable via timeout")
             muteUntil = 0
@@ -698,6 +730,37 @@ module.exports = function(app) {
   }
 */
 
+  function setZoneVal() {
+    for (const path in notificationList) {
+      pathTrimmed = path.substring(path.indexOf(".") + 1);
+      z = pathTrimmed+".meta.zones"
+      app.debug("Zone Path:", z)
+      app.getSelfPath(z).forEach(function (zone) {
+          console.log("zone values", zone);
+      });
+
+   /*
+        const nvalue = app.getSelfPath(qPath)
+        const delta = {
+          updates: [{
+            values: [{
+              path: qPath,
+                value: {
+                  state: nvalue.value.state
+               }
+            }],
+            $source: nvalue.$source,
+          }]
+        }
+        app.handleMessage(plugin.id, delta)
+      }
+    }
+   */
+    }
+  }
+
+////
+
 ////
 
   plugin.registerWithRouter = (router) => {
@@ -711,10 +774,13 @@ module.exports = function(app) {
     })
     router.get("/disable", (req, res) => {
       var muteTime = parseInt(req._parsedUrl.query)
-      if ( isNaN(muteTime) ) { muteTime = 3600 }   // default 3600 seconds
+      if ( isNaN(muteTime) ) { muteTime = maxDisable }   // default set @ top 3600 seconds
       if (muteTime > 28800) { 
         muteTime = 18800 // max 8hr disable
         res.send("Disable playback for "+muteTime+" seconds, maxmium allowed.")
+      } else if ( muteTime < 0 ){
+        res.json(pluginProps.playbackControlPrefix)
+        return  // special case, just return path
       } else {
         res.send("Disable playback for "+muteTime+" seconds")
       }
@@ -723,7 +789,7 @@ module.exports = function(app) {
       app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: true } ] } ] })
       delay( muteTime * 1000 ).then(() => {
         if ( muteUntil <= now() &&  muteUntil != 0 ) {  // check if later timer set and if not already cleared
-          app.debug("Enable in get/disable")
+          app.debug("Enable playback")
           app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.disable', value: false } ] } ] })
           muteUntil = 0
           processQueue()
@@ -731,9 +797,9 @@ module.exports = function(app) {
       })
     })
     router.get("/list", (req, res) => {
-      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {   // load notification values
-         if(update.value.state) notificationList['notifications.'+update.path.substring(0, update.path.lastIndexOf("."))] = update.value.state
-      })
+//      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {   // load notification values
+//         if(update.value.state) notificationList['notifications.'+update.path] = update.value.state
+//      })
       const vlist = {}
       notificationList = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
       for (const path in notificationList) {
@@ -755,14 +821,22 @@ module.exports = function(app) {
       }
       res.send(vlist)
     })
+    router.get("/szv", (req, res) => {
+      //setZoneVal()
+      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function(update) {
+        app.debug("PV", 'notifications.'+update.path, update.value.state)
+      })
+      res.send("szv ok")
+    })
+
 
 /*
     router.get("/ignoreLast", (req, res) => {
       if(!lastAlert) { res.send("No alerts to mute.") ; return }
       var muteTime = parseInt(req._parsedUrl.query)
       if ( isNaN(muteTime) ) { muteTime = 600 }   // default 600 seconds
-      if (muteTime > 3600) {  // max 1hr
-        muteTime = 3600
+      if (muteTime > maxDisable) {  // max 1hr
+        muteTime = maxDisable
         res.send("Muting "+lastAlert+ " playback for "+muteTime+" seconds, maxmium allowed.")
       } else {
         res.send("Muting "+lastAlert+ " playback for "+muteTime+" seconds")
