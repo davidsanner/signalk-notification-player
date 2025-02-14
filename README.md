@@ -95,6 +95,9 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
+- version 2.1.0:  
+  - Feature: Webapp now controls and shows playback status (if disabled).
+  - Fix: get notifications manually at startup as subscription missing notifications.
 - version 2.0.1:  
   - Fix: issue with instant notification subscription missing notifications at startup, get notifications manually for webapp
 - version 2.0:  
