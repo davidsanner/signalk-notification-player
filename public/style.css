@@ -71,3 +71,17 @@ tr:nth-child(even) {
   font-size: 11px;
   padding: 10px;
 }
+
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.7); 
+    display: none; 
+    justify-content: center;
+    align-items: flex-start; 
+    z-index: 1; /*top of other content */
+    color: darkred;
+    font-size: 2em;
+}
