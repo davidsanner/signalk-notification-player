@@ -95,6 +95,9 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
+- version 2.2.0:  
+  - Feature: Custom delay before playing notifications to help with bouncing zone states
+  - Fix: major refactor of event Q logic, adding fail safe features to assure all notifications are played
 - version 2.1.0:  
   - Feature: Webapp now controls and shows playback status (if disabled).
   - Fix: get notifications manually at startup as subscription missing notifications.
