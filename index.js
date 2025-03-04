@@ -158,7 +158,7 @@ module.exports = function(app) {
                   })
                 }
               }
-              else if ( alertQueue.has(nPath) ) {  // resolved: state's notificationType has no continuous or single notice method, typical back to normal state
+              else if ( alertQueue.has(nPath) && (!notice && !continuous) ) {  // resolved: state's notificationType has no continuous or single notice method, typical back to normal state
                 if(alertQueue.get(nPath).played != true) { // try and play at least once but if cleared then only once
                   alertQueue.get(nPath).mode = 'notice'
                 } else
