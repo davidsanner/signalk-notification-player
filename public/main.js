@@ -3,8 +3,7 @@
 //
 const BASE_URL = '/plugins/signalk-notification-player'
 const SELF_URL = '/signalk/v1/api/vessels/self'
-const CONFIG_URL =
-  '/admin/#/serverConfiguration/plugins/signalk-notification-player'
+const CONFIG_URL = '/admin/#/serverConfiguration/plugins/signalk-notification-player'
 let popupActive = false // keep popup data from reloading when main table reloads
 let vesselName = ''
 let zones = ''
@@ -34,9 +33,7 @@ headerRow.innerHTML =
 table.appendChild(headerRow)
 listContent.appendChild(table)
 document.getElementById(`silenceAll`).addEventListener('click', processSilence)
-document
-  .getElementById('playbackDisabled')
-  .addEventListener('click', processDisable)
+document.getElementById('playbackDisabled').addEventListener('click', processDisable)
 document.getElementById('playbackDisabled').checked = updateDisable
 
 async function getJSON(endpoint) {
@@ -82,12 +79,10 @@ async function processNotification(endpoint) {
 
 function updateTimeStamp(status) {
   const now = new Date()
-  if (status)
-    document.getElementById('timestamp').textContent = now.toLocaleTimeString()
+  if (status) document.getElementById('timestamp').textContent = now.toLocaleTimeString()
   else {
     const errMsg = document.getElementById('timestamp')
-    errMsg.innerHTML =
-      '<div style="font-size: x-large; color:#F00;">COMMUNICATION ERROR</div>'
+    errMsg.innerHTML = '<div style="font-size: x-large; color:#F00;">COMMUNICATION ERROR</div>'
   }
 }
 
@@ -156,27 +151,17 @@ function updateList(data) {
   Object.entries(data).forEach(([path, value]) => {
     pathTrimmed = path.substring(path.indexOf('.') + 1)
     if (document.getElementById(`${path}-resolve`))
-      document
-        .getElementById(`${path}-resolve`)
-        .addEventListener('click', processResolve)
+      document.getElementById(`${path}-resolve`).addEventListener('click', processResolve)
     if (document.getElementById(`${path}-silence`))
-      document
-        .getElementById(`${path}-silence`)
-        .addEventListener('click', processSilence)
-    document
-      .getElementById(`${path}-disabled`)
-      .addEventListener('click', processPathDisable)
-    document
-      .getElementById(pathTrimmed)
-      .addEventListener('mouseout', function () {
-        document.getElementById('popupContent').style.display = 'none'
-        popupActive = false
-        fetchAndUpdateList()
-      })
+      document.getElementById(`${path}-silence`).addEventListener('click', processSilence)
+    document.getElementById(`${path}-disabled`).addEventListener('click', processPathDisable)
+    document.getElementById(pathTrimmed).addEventListener('mouseout', function () {
+      document.getElementById('popupContent').style.display = 'none'
+      popupActive = false
+      fetchAndUpdateList()
+    })
     if (!popupActive) {
-      document
-        .getElementById(pathTrimmed)
-        .addEventListener('mouseover', processMouseOver)
+      document.getElementById(pathTrimmed).addEventListener('mouseover', processMouseOver)
     }
   })
 }
@@ -184,21 +169,15 @@ function updateList(data) {
 function processMouseOver(event) {
   popupActive = true
   if (event.target.id.includes('navigation.anchor'))
-    zonePath =
-      SELF_URL +
-      '/' +
-      event.target.id.replaceAll('.', '/') +
-      '/meta/value/zones' // support for anchor api w/ different path?
-  else
-    zonePath =
-      SELF_URL + '/' + event.target.id.replaceAll('.', '/') + '/meta/zones'
+    zonePath = SELF_URL + '/' + event.target.id.replaceAll('.', '/') + '/meta/value/zones'
+  // support for anchor api w/ different path?
+  else zonePath = SELF_URL + '/' + event.target.id.replaceAll('.', '/') + '/meta/zones'
   fetch(zonePath)
     .then((response) => response.text())
     .then((text) => {
       text = text.replaceAll('},{', '}<hr>{')
       text = text.replace(/[\[\]]/g, '')
-      if (text.includes('Cannot GET '))
-        document.getElementById('zones').innerHTML = '---'
+      if (text.includes('Cannot GET ')) document.getElementById('zones').innerHTML = '---'
       else document.getElementById('zones').innerHTML = text
     })
     .catch((error) => {
@@ -239,8 +218,7 @@ async function fetchStatus() {
       const res1 = await fetch(BASE_URL + '/disable?-1')
       const urlpath = await res1.json()
 
-      playbackControlPath =
-        SELF_URL + '/' + urlpath.replaceAll('.', '/') + '/disable'
+      playbackControlPath = SELF_URL + '/' + urlpath.replaceAll('.', '/') + '/disable'
       const res2 = await fetch(playbackControlPath)
 
       updateDisable = (await res2.json()).value
@@ -263,10 +241,8 @@ function processResolve(event) {
 }
 
 function processSilence(event) {
-  if (event.target.id == 'silenceAll')
-    processNotification(BASE_URL + '/silence')
-  else
-    processNotification(BASE_URL + '/silence?' + event.target.id.split('-')[0])
+  if (event.target.id == 'silenceAll') processNotification(BASE_URL + '/silence')
+  else processNotification(BASE_URL + '/silence?' + event.target.id.split('-')[0])
 }
 
 function processDisable(event) {
@@ -283,13 +259,7 @@ function processDisable(event) {
 
 function processPathDisable(event) {
   startTimer() // restart timer so page doesn't reload while processing event
-  processNotification(
-    BASE_URL +
-      '/disablePath?' +
-      event.target.id.split('-')[0] +
-      '?' +
-      event.target.checked
-  )
+  processNotification(BASE_URL + '/disablePath?' + event.target.id.split('-')[0] + '?' + event.target.checked)
   setTimeout(fetchAndUpdateList, 100)
 }
 
