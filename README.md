@@ -49,6 +49,10 @@ Custom disable all playback for 5 minutes ( max value 28800 / ie 8hrs )
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/disable?300
 ```
+Custom disable playback for specific path (args: path & true/false )
+```
+curl http://localhost:3000/plugins/signalk-notification-player/disablePath?electrical.batteries.House.voltage?true
+```
 List all known notifcation states & associated value (json)
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/list
