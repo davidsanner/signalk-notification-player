@@ -42,7 +42,7 @@ module.exports = function (app) {
   var alertQueue = new Map()
   var alertLog = {}
   var notificationList = {}
-  const notificationFiles = [ 'builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3' ]
+  const notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
   var notificationSounds = { emergency: notificationFiles[0], alarm: notificationFiles[1], warn: notificationFiles[2], alert: notificationFiles[3] }
   var enableNotificationTypes = { emergency: 'continuous', alarm: 'continuous', warn: 'single notice', alert: 'single notice' }
   var notificationPrePost = { emergency: true, alarm: true, warn: true, alert: false }
@@ -64,12 +64,10 @@ module.exports = function (app) {
     }
     if (pluginProps.mappings)
       pluginProps.mappings.forEach((m) => {
-        if (typeof m.alarmAudioFileCustom != 'undefined')
-          m.alarmAudioFile = m.alarmAudioFileCustom
+        if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom
       })
     if (!(vesselName = app.getSelfPath('name'))) vesselName = 'Unnamed'
-    if (!pluginProps.playbackControlPrefix)
-      pluginProps.playbackControlPrefix = 'digital.notificationPlayer'
+    if (!pluginProps.playbackControlPrefix) pluginProps.playbackControlPrefix = 'digital.notificationPlayer'
 
     listFile = fspath.join(app.getDataDirPath(), 'notificationList.json')
     readListFile(listFile)
@@ -77,13 +75,11 @@ module.exports = function (app) {
     subscribeToNotifications()
     delay(4000).then(() => {
       // also startup of SK so wait for things to settle and then check we did't miss any notifications
-      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(
-        function (update) {
-          // load notificationList
-          update.path = 'notifications.' + update.path
-          processNotifications({ updates: [{ values: [update] }] })
-        }
-      )
+      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function (update) {
+        // load notificationList
+        update.path = 'notifications.' + update.path
+        processNotifications({ updates: [{ values: [update] }] })
+      })
     })
     subscribeToHandlers()
   }
@@ -108,17 +104,11 @@ module.exports = function (app) {
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
         if (typeof notificationList[nPath] != 'undefined')
-          notificationList[nPath] = {
-            state: value.state,
-            disabled: notificationList[nPath].disabled
-          }
+          notificationList[nPath] = { state: value.state, disabled: notificationList[nPath].disabled }
         else notificationList[nPath] = { state: value.state, disabled: false }
 
         if (value != null && typeof value.state != 'undefined') {
-          if (
-            typeof value.method != 'undefined' &&
-            value.method.indexOf('sound') != -1
-          ) {
+          if (typeof value.method != 'undefined' && value.method.indexOf('sound') != -1) {
             let continuous = false
             let notice = false
             let noPlay = false
@@ -132,29 +122,22 @@ module.exports = function (app) {
               pluginProps.mappings &&
               nPath &&
               value.state &&
-              (notification = pluginProps.mappings.find(
-                (ppm) => ppm.path === nPath && ppm.state === value.state
-              ))
+              (notification = pluginProps.mappings.find((ppm) => ppm.path === nPath && ppm.state === value.state))
             ) {
               //app.debug("Found custom notification", notification )
-              if (notification.alarmAudioFile)
-                audioFile = notification.alarmAudioFile
+              if (notification.alarmAudioFile) audioFile = notification.alarmAudioFile
               if (notification.alarmType == 'continuous') continuous = true
               else if (notification.alarmType == 'single notice') notice = true
               if (notification.noPlay == true) noPlay = true
               if (notification.repeatGap) repeatGap = notification.repeatGap
               if (notification.msgServiceAlert) msgServiceAlert = true
-              if (notification.playAfter)
-                playAfter = now() + notification.playAfter * 1000
+              if (notification.playAfter) playAfter = now() + notification.playAfter * 1000
             } else {
-              if (enableNotificationTypes[value.state] == 'continuous')
-                continuous = true
-              else if (enableNotificationTypes[value.state] == 'single notice')
-                notice = true
+              if (enableNotificationTypes[value.state] == 'continuous') continuous = true
+              else if (enableNotificationTypes[value.state] == 'single notice') notice = true
             }
 
-            if (update.timestamp)
-              eventTimeStamp = new Date(update.timestamp).getTime()
+            if (update.timestamp) eventTimeStamp = new Date(update.timestamp).getTime()
             else eventTimeStamp = now()
             // Has notification type, otherwise delete from Q and only add if new path entry or if changing existing path's state (eg. alarm to alert)
             // and if messages changes && not bouncing/recent (except alarm & emergency)
@@ -165,9 +148,7 @@ module.exports = function (app) {
                 alertQueue.get(nPath).state != value.state ||
                 alertQueue.get(nPath).message != value.message) &&
               (!alertLog[nPath + '.' + value.state] ||
-                alertLog[nPath + '.' + value.state].timestamp +
-                  repeatGap * 1000 <
-                  eventTimeStamp ||
+                alertLog[nPath + '.' + value.state].timestamp + repeatGap * 1000 < eventTimeStamp ||
                 value.state == 'emergency' ||
                 value.state == 'alarm')
             ) {
@@ -194,10 +175,7 @@ module.exports = function (app) {
 
               alertQueue.set(nPath, args)
               lastAlert = args.path + '.' + args.state
-              alertLog[args.path + '.' + args.state] = {
-                message: args.message,
-                timestamp: eventTimeStamp
-              }
+              alertLog[args.path + '.' + args.state] = { message: args.message, timestamp: eventTimeStamp }
 
               app.debug(
                 'ADD2Q:' + args.path.substring(args.path.indexOf('.') + 1),
@@ -214,13 +192,8 @@ module.exports = function (app) {
                   text: vesselName + ': ' + args.message,
                   fields: {
                     'SignalK Notification': args.path + ' / ' + args.state,
-                    Message:
-                      args.message +
-                      ' @ ' +
-                      new Date(eventTimeStamp).toISOString(),
-                    Value: app.getSelfPath(
-                      args.path.substring(args.path.indexOf('.') + 1) + '.value'
-                    )
+                    Message: args.message + ' @ ' + new Date(eventTimeStamp).toISOString(),
+                    Value: app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1) + '.value')
                   }
                 })
               }
@@ -251,11 +224,7 @@ module.exports = function (app) {
   function stopProcessingQueue() {
     //app.debug('stop playing')
     if (typeof playPID === 'number') process.kill(playPID)
-    if (
-      queueActive &&
-      pluginProps.postCommand &&
-      pluginProps.postCommand.length > 0
-    ) {
+    if (queueActive && pluginProps.postCommand && pluginProps.postCommand.length > 0) {
       queueActive = false
       const { exec } = require('node:child_process')
       app.debug('post-command: %s', pluginProps.postCommand)
@@ -287,24 +256,13 @@ module.exports = function (app) {
         }
       } else queueActive = true
 
-      if (
-        (soundEvent.message && soundEvent.played == 2) ||
-        (!soundEvent.audioFile && soundEvent.played == 1)
-      ) {
+      if ((soundEvent.message && soundEvent.played == 2) || (!soundEvent.audioFile && soundEvent.played == 1)) {
         if (process.platform === 'linux' && !hasFestival) {
-          app.debug(
-            'skipping saying:' + soundEvent.message,
-            'mode:' + soundEvent.mode,
-            'played:' + soundEvent.played
-          )
+          app.debug('skipping saying:' + soundEvent.message, 'mode:' + soundEvent.mode, 'played:' + soundEvent.played)
           playBackActive = false
           processQueue()
         } else {
-          app.debug(
-            'saying:' + soundEvent.message,
-            'mode:' + soundEvent.mode,
-            'played:' + soundEvent.played
-          )
+          app.debug('saying:' + soundEvent.message, 'mode:' + soundEvent.mode, 'played:' + soundEvent.played)
           try {
             say.speak(soundEvent.message, null, null, (err) => {
               playBackActive = false
@@ -325,20 +283,10 @@ module.exports = function (app) {
         }
         if (fs.existsSync(soundFile)) {
           let args = [soundFile]
-          if (
-            pluginProps.alarmAudioPlayerArguments &&
-            pluginProps.alarmAudioPlayerArguments.length > 0
-          ) {
-            args = [
-              ...pluginProps.alarmAudioPlayerArguments.split(' '),
-              ...args
-            ]
+          if (pluginProps.alarmAudioPlayerArguments && pluginProps.alarmAudioPlayerArguments.length > 0) {
+            args = [...pluginProps.alarmAudioPlayerArguments.split(' '), ...args]
           }
-          app.debug(
-            'playing:' + soundEvent.audioFile,
-            'mode:' + soundEvent.mode,
-            'played:' + soundEvent.played
-          )
+          app.debug('playing:' + soundEvent.audioFile, 'mode:' + soundEvent.mode, 'played:' + soundEvent.played)
 
           let play = child_process.spawn(command, args)
           playPID = play.pid
@@ -380,10 +328,7 @@ module.exports = function (app) {
         audioEvent = Array.from(alertQueue)[queueIndex][1]
         //app.debug("AE", audioEvent)
 
-        if (
-          (audioEvent.playAfter != 0 && audioEvent.playAfter > now()) ||
-          audioEvent.disabled
-        ) {
+        if ((audioEvent.playAfter != 0 && audioEvent.playAfter > now()) || audioEvent.disabled) {
           // Q item not playable yet
           queueIndex++
           let playableInQ = 0
@@ -459,8 +404,7 @@ module.exports = function (app) {
         if (val.disabled) {
           if (val.disabled) {
             alertQueue.delete(path) // remove event from Q / silence at startup
-            if (typeof notificationList[path] != 'undefined')
-              notificationList[path].disabled = true
+            if (typeof notificationList[path] != 'undefined') notificationList[path].disabled = true
             else notificationList[path] = { state: '', disabled: true }
           }
         }
@@ -478,8 +422,7 @@ module.exports = function (app) {
             newPath = newPath.substring(0, newPath.lastIndexOf('.')) // strip final ending
             results.push({ path: newPath, value: current[key] })
           }
-          if (typeof current[key] === 'object' && current[key] !== null)
-            traverse(current[key], newPath)
+          if (typeof current[key] === 'object' && current[key] !== null) traverse(current[key], newPath)
         }
       }
     }
@@ -490,22 +433,12 @@ module.exports = function (app) {
   plugin.schema = function () {
     let defaultAudioPlayer = 'mpg321'
     if (process.platform === 'darwin') defaultAudioPlayer = 'afplay'
-    let notificationTypes = [
-      'continuous',
-      'single notice',
-      '-PLAYBACK DISABLED-'
-    ]
+    let notificationTypes = ['continuous', 'single notice', '-PLAYBACK DISABLED-']
 
     let schema = {
       type: 'object',
-      description:
-        'Default Playback Method for Each (Emergency/Alarm/Warn/Alert) Notification Type:',
-      required: [
-        'enableEmergencies',
-        'enableAlarms',
-        'enableWarnings',
-        'enableAlerts'
-      ],
+      description: 'Default Playback Method for Each (Emergency/Alarm/Warn/Alert) Notification Type:',
+      required: ['enableEmergencies', 'enableAlarms', 'enableWarnings', 'enableAlerts'],
       properties: {
         t1: {
           type: 'object',
@@ -643,8 +576,7 @@ module.exports = function (app) {
         },
         repeatGap: {
           title: 'Minimum Gap Between Duplicate Notifications',
-          description:
-            'Limit rate of notifications when bouncing in/out of a zone (seconds), except emergency & alarm',
+          description: 'Limit rate of notifications when bouncing in/out of a zone (seconds), except emergency & alarm',
           type: 'number',
           default: 0
         },
@@ -658,8 +590,7 @@ module.exports = function (app) {
         slackWebhookURL: {
           type: 'string',
           title: 'Slack Webhook URL',
-          description:
-            'Optional Slack messaging for Custom Actions (See: https://api.slack.com/messaging/webhooks)'
+          description: 'Optional Slack messaging for Custom Actions (See: https://api.slack.com/messaging/webhooks)'
         },
         slackChannel: {
           type: 'string',
@@ -680,17 +611,9 @@ module.exports = function (app) {
               },
               state: {
                 type: 'string',
-                enum: [
-                  'emergency',
-                  'alarm',
-                  'warn',
-                  'alert',
-                  'normal',
-                  'nominal'
-                ],
+                enum: ['emergency', 'alarm', 'warn', 'alert', 'normal', 'nominal'],
                 title: 'Notification State',
-                description:
-                  '(Notification Path can be assigned a custom action for each Notification State)',
+                description: '(Notification Path can be assigned a custom action for each Notification State)',
                 default: 'emergency'
               },
               alarmType: {
@@ -731,16 +654,14 @@ module.exports = function (app) {
               },
               playAfter: {
                 title: 'Delay Before Notification is Played',
-                description:
-                  'Seconds notification must remain in this zone state before notifcation is played',
+                description: 'Seconds notification must remain in this zone state before notifcation is played',
                 type: 'number',
                 default: 0
               },
               msgServiceAlert: {
                 type: 'boolean',
                 title: 'Send Notification via Slack',
-                description:
-                  'Send notifcation to Slack channel (if Webhook URL configured above)',
+                description: 'Send notifcation to Slack channel (if Webhook URL configured above)',
                 default: false
               }
             }
@@ -760,78 +681,31 @@ module.exports = function (app) {
       notificationPrePost.warn = pluginProps.prePostWarn
       notificationPrePost.alert = pluginProps.prePostAlert
 
-      if (pluginProps.emergencyAudioFileCustom)
-        notificationSounds.emergency = pluginProps.emergencyAudioFileCustom
-      else if (pluginProps.emergencyAudioFile)
-        notificationSounds.emergency = pluginProps.emergencyAudioFile
-      if (pluginProps.alarmAudioFileCustom)
-        notificationSounds.alarm = pluginProps.alarmAudioFileCustom
-      else if (pluginProps.alarmAudioFile)
-        notificationSounds.alarm = pluginProps.alarmAudioFile
-      if (pluginProps.warnAudioFileCustom)
-        notificationSounds.warn = pluginProps.warnAudioFileCustom
-      else if (pluginProps.warnAudioFile)
-        notificationSounds.warn = pluginProps.warnAudioFile
-      if (pluginProps.alertAudioFileCustom)
-        notificationSounds.alert = pluginProps.alertAudioFileCustom
-      else if (pluginProps.alertAudioFile)
-        notificationSounds.alert = pluginProps.alertAudioFile
+      if (pluginProps.emergencyAudioFileCustom) notificationSounds.emergency = pluginProps.emergencyAudioFileCustom
+      else if (pluginProps.emergencyAudioFile) notificationSounds.emergency = pluginProps.emergencyAudioFile
+      if (pluginProps.alarmAudioFileCustom) notificationSounds.alarm = pluginProps.alarmAudioFileCustom
+      else if (pluginProps.alarmAudioFile) notificationSounds.alarm = pluginProps.alarmAudioFile
+      if (pluginProps.warnAudioFileCustom) notificationSounds.warn = pluginProps.warnAudioFileCustom
+      else if (pluginProps.warnAudioFile) notificationSounds.warn = pluginProps.warnAudioFile
+      if (pluginProps.alertAudioFileCustom) notificationSounds.alert = pluginProps.alertAudioFileCustom
+      else if (pluginProps.alertAudioFile) notificationSounds.alert = pluginProps.alertAudioFile
     }
     return schema
   }
 
   function subscribeToHandlers() {
     app.handleMessage(plugin.id, {
-      updates: [
-        {
-          values: [
-            {
-              path: pluginProps.playbackControlPrefix + '.disable',
-              value: false
-            }
-          ]
-        }
-      ]
+      updates: [{ values: [{ path: pluginProps.playbackControlPrefix + '.disable', value: false }] }]
     })
-    app.registerPutHandler(
-      'vessels.self',
-      pluginProps.playbackControlPrefix + '.disable',
-      handleDisable
-    )
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix + '.disable', handleDisable)
     app.handleMessage(plugin.id, {
-      updates: [
-        {
-          values: [
-            {
-              path: pluginProps.playbackControlPrefix + '.silence',
-              value: false
-            }
-          ]
-        }
-      ]
+      updates: [{ values: [{ path: pluginProps.playbackControlPrefix + '.silence', value: false }] }]
     })
-    app.registerPutHandler(
-      'vessels.self',
-      pluginProps.playbackControlPrefix + '.silence',
-      handleSilence
-    )
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix + '.silence', handleSilence)
     app.handleMessage(plugin.id, {
-      updates: [
-        {
-          values: [
-            {
-              path: pluginProps.playbackControlPrefix + '.resolve',
-              value: false
-            }
-          ]
-        }
-      ]
+      updates: [{ values: [{ path: pluginProps.playbackControlPrefix + '.resolve', value: false }] }]
     })
-    app.registerPutHandler(
-      'vessels.self',
-      pluginProps.playbackControlPrefix + '.resolve',
-      handleResolve
-    )
+    app.registerPutHandler('vessels.self', pluginProps.playbackControlPrefix + '.resolve', handleResolve)
     //app.handleMessage(plugin.id, { updates: [ { values: [ { path: 'digital.notificationPlayer.ignoreLast', value: false } ] } ] })
     //app.registerPutHandler('vessels.self', 'digital.notificationPlayer.ignoreLast', handleIgnoreLast)
   }
@@ -846,12 +720,7 @@ module.exports = function (app) {
         }
       ]
     }
-    app.subscriptionmanager.subscribe(
-      command,
-      unsubscribes,
-      subscriptionError,
-      processNotifications
-    )
+    app.subscriptionmanager.subscribe(command, unsubscribes, subscriptionError, processNotifications)
   }
 
   ////
@@ -880,38 +749,34 @@ module.exports = function (app) {
       }
       app.handleMessage(plugin.id, delta)
     } else {
-      // silence all !normal
-      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(
-        function (update) {
-          // load notificationList
-          path = 'notifications.' + update.path
-          const nvalue = app.getSelfPath(path)
-          if (nvalue.value.state != 'normal') {
-            app.debug('Silencing PATH:', path)
-            const nmethod = nvalue.value.method.filter(
-              (item) => item !== 'sound'
-            )
-            const delta = {
-              updates: [
-                {
-                  values: [
-                    {
-                      path: path,
-                      value: {
-                        state: nvalue.value.state,
-                        method: nmethod,
-                        message: nvalue.value.message
-                      }
+      //  Perhaps traverse all "notifications" instead of alertQueue????
+      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function (update) {
+        // load notificationList
+        path = 'notifications.' + update.path
+        const nvalue = app.getSelfPath(path)
+        if (nvalue.value.state != 'normal') {
+          app.debug('Silencing PATH:', path)
+          const nmethod = nvalue.value.method.filter((item) => item !== 'sound')
+          const delta = {
+            updates: [
+              {
+                values: [
+                  {
+                    path: path,
+                    value: {
+                      state: nvalue.value.state,
+                      method: nmethod,
+                      message: nvalue.value.message
                     }
-                  ],
-                  $source: nvalue.$source
-                }
-              ]
-            }
-            app.handleMessage(plugin.id, delta)
+                  }
+                ],
+                $source: nvalue.$source
+              }
+            ]
           }
+          app.handleMessage(plugin.id, delta)
         }
-      )
+      })
     }
   }
 
@@ -959,13 +824,7 @@ module.exports = function (app) {
         muteUntil = now() + maxDisable * 1000 // 1hr max
         app.debug('Disabling in handleDisable', value)
         app.handleMessage(plugin.id, {
-          updates: [
-            {
-              values: [
-                { path: 'digital.notificationPlayer.disable', value: value }
-              ]
-            }
-          ]
+          updates: [{ values: [{ path: 'digital.notificationPlayer.disable', value: value }] }]
         })
         //muteUntil = now() + (300 * 1000)   // 5 minutes
 
@@ -975,13 +834,7 @@ module.exports = function (app) {
             app.debug('Enabling in handleDisable via timeout')
             muteUntil = 0
             app.handleMessage(plugin.id, {
-              updates: [
-                {
-                  values: [
-                    { path: 'digital.notificationPlayer.disable', value: false }
-                  ]
-                }
-              ]
+              updates: [{ values: [{ path: 'digital.notificationPlayer.disable', value: false }] }]
             })
             processQueue()
           }
@@ -991,13 +844,7 @@ module.exports = function (app) {
       app.debug('Enabling in handleDisable', value)
       muteUntil = 0
       app.handleMessage(plugin.id, {
-        updates: [
-          {
-            values: [
-              { path: 'digital.notificationPlayer.disable', value: false }
-            ]
-          }
-        ]
+        updates: [{ values: [{ path: 'digital.notificationPlayer.disable', value: false }] }]
       })
       processQueue()
     }
@@ -1078,23 +925,17 @@ module.exports = function (app) {
       } else {
         notificationList[path].disabled = false
         if (alertQueue.get(path) !== undefined) {
-          if (alertQueue.get(path).disabled)
-            alertQueue.get(path).disabled = false
+          if (alertQueue.get(path).disabled) alertQueue.get(path).disabled = false
         }
       }
       let notificationListTrimmed = {}
       for (const key in notificationList) {
         if (notificationList[key].disabled == true) {
-          notificationListTrimmed[key] = {
-            disabled: notificationList[key].disabled
-          }
+          notificationListTrimmed[key] = { disabled: notificationList[key].disabled }
         }
       }
       try {
-        fs.writeFileSync(
-          listFile,
-          JSON.stringify(notificationListTrimmed, null, 2)
-        )
+        fs.writeFileSync(listFile, JSON.stringify(notificationListTrimmed, null, 2))
       } catch (e) {
         app.error('Could not write ' + listFile + ' - ' + e)
       }
@@ -1108,9 +949,7 @@ module.exports = function (app) {
       } // default set @ top 3600 seconds
       if (muteTime > 28800) {
         muteTime = 18800 // max 8hr disable
-        res.send(
-          'Disable playback for ' + muteTime + ' seconds, maxmium allowed.'
-        )
+        res.send('Disable playback for ' + muteTime + ' seconds, maxmium allowed.')
       } else if (muteTime < 0) {
         res.json(pluginProps.playbackControlPrefix)
         return // special case, just return path
@@ -1120,26 +959,14 @@ module.exports = function (app) {
       app.debug('Disable playback for next', muteTime, 'seconds')
       muteUntil = now() + muteTime * 1000
       app.handleMessage(plugin.id, {
-        updates: [
-          {
-            values: [
-              { path: 'digital.notificationPlayer.disable', value: true }
-            ]
-          }
-        ]
+        updates: [{ values: [{ path: 'digital.notificationPlayer.disable', value: true }] }]
       })
       delay(muteTime * 1000).then(() => {
         if (muteUntil <= now() && muteUntil != 0) {
           // check if later timer set and if not already cleared
           app.debug('Enable playback')
           app.handleMessage(plugin.id, {
-            updates: [
-              {
-                values: [
-                  { path: 'digital.notificationPlayer.disable', value: false }
-                ]
-              }
-            ]
+            updates: [{ values: [{ path: 'digital.notificationPlayer.disable', value: false }] }]
           })
           muteUntil = 0
           processQueue()
@@ -1149,16 +976,10 @@ module.exports = function (app) {
 
     router.get('/list', (req, res) => {
       const vlist = {}
-      notificationList = Object.fromEntries(
-        Object.entries(notificationList).sort((a, b) =>
-          a[0].localeCompare(b[0])
-        )
-      )
+      notificationList = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
       for (const path in notificationList) {
         if (path.startsWith('notifications.navigation.anchor')) {
-          nvalue = app.getSelfPath(
-            path.substring(path.indexOf('.') + 1) + '.distanceFromBow'
-          ) // anchor watch api path
+          nvalue = app.getSelfPath(path.substring(path.indexOf('.') + 1) + '.distanceFromBow') // anchor watch api path
         } else {
           nvalue = app.getSelfPath(path.substring(path.indexOf('.') + 1)) // strip leading notifiction from typical path
         }
@@ -1180,11 +1001,9 @@ module.exports = function (app) {
 
     router.get('/szv', (req, res) => {
       //setZoneVal()
-      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(
-        function (update) {
-          app.debug('PV', 'notifications.' + update.path, update.value.state)
-        }
-      )
+      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function (update) {
+        app.debug('PV', 'notifications.' + update.path, update.value.state)
+      })
       res.send('szv ok')
     })
 
@@ -1214,4 +1033,3 @@ module.exports = function (app) {
   return plugin
 }
 // END //
-
