@@ -13,6 +13,21 @@ let updateTimer
 let updateDisable = false
 let playbackControlPath = ''
 
+const table = document.createElement('table')
+const headerRow = document.createElement('tr')
+const bgColorList = {'emergency': '#ff0000', 'alarm': '#ff5555', 'warn': 'yellow', 'alert': 'olive', 'normal': '#b6c6b0', 'nominal': '#9bb194'}
+const listContent = document.getElementById('list-div')
+listContent.innerHTML = ''
+
+headerRow.innerHTML = '<th style="font-size: large">'+vesselName+
+     ' Notifications</th><th>Value</th><th>Age<br></th><th>State</th><th>Disable</th><th span=2><button id=silenceAll>Silence All</button></th>'
+table.appendChild(headerRow)
+listContent.appendChild(table)
+document.getElementById(`silenceAll`).addEventListener('click', processSilence)
+document.getElementById('playbackDisabled').addEventListener('click', processDisable)
+document.getElementById('playbackDisabled').checked = updateDisable
+
+
 async function getJSON(endpoint) {
   try {
     const response = await fetch(`${endpoint}`, {
@@ -65,11 +80,7 @@ function updateTimeStamp(status) {
 }
 
 function updateList(data) {
-  const bgColorList = {'emergency': '#ff0000', 'alarm': '#ff5555', 'warn': 'yellow', 'alert': 'olive', 'normal': '#b6c6b0', 'nominal': '#9bb194'}
-  const listContent = document.getElementById('list-div')
   let age 
-  listContent.innerHTML = ''
-
   statusElement = document.getElementById('overlay')
   if(updateDisable == true) {
     listContent.style.opacity = '.5'
@@ -82,16 +93,14 @@ function updateList(data) {
     statusElement.style.display = 'none'
   }
 
-  const table = document.createElement('table')
-  const headerRow = document.createElement('tr')
-  headerRow.innerHTML = '<th style="font-size: large">'+vesselName+
-       ' Notifications</th><th>Value</th><th>Age<br></th><th>State</th><th span=2><button id=silenceAll>Silence All</button></th>'
-  table.appendChild(headerRow)
-
   Object.entries(data).forEach(([path, value]) => {
     let pathVal, pathUnits
-    const row = document.createElement('tr')
-    const bgc = bgColorList[value.state]
+    if (!(row = document.getElementById("row-"+path))) {
+      row = document.createElement('tr')
+      row.setAttribute("id", "row-"+path);
+    } 
+    let bgc = bgColorList[value.state]
+    if(typeof bgc == "undefined") bgc = "#BBB"
     const state = value.state
     let bgAge = 'style="color:#666"'
     pathTrimmed = path.substring(path.indexOf(".") + 1);
@@ -128,24 +137,27 @@ function updateList(data) {
       pathUnits = ""
       age = '-'
     }
+    if(value.disabled)
+      disabledStyle = 'background-color: #7E3817'
+    else
+      disabledStyle = ''
 
-    row.innerHTML = `<td id="${pathTrimmed}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td bgcolor="${bgc}">${state}</td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
+    row.innerHTML = `<td id="${pathTrimmed}" style="${disabledStyle}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td bgcolor="${bgc}">${state}</td><td><input id=${path}-disabled type="checkbox"}></td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
     table.appendChild(row)
+    document.getElementById(id=path+"-disabled").checked = value.disabled
   })
-  listContent.appendChild(table)
 
   Object.entries(data).forEach(([path, value]) => {
     pathTrimmed = path.substring(path.indexOf(".") + 1);
     if(document.getElementById(`${path}-resolve`)) document.getElementById(`${path}-resolve`).addEventListener('click', processResolve)
     if(document.getElementById(`${path}-silence`)) document.getElementById(`${path}-silence`).addEventListener('click', processSilence)
+    document.getElementById(`${path}-disabled`).addEventListener('click', processPathDisable)
     document.getElementById(pathTrimmed).addEventListener('mouseout', function(){document.getElementById('popupContent').style.display = 'none'; popupActive = false ; fetchAndUpdateList()})
     if(!popupActive) {
     document.getElementById(pathTrimmed).addEventListener('mouseover', processMouseOver)
     }
   })
-  document.getElementById(`silenceAll`).addEventListener('click', processSilence)
-  document.getElementById('playbackDisabled').addEventListener('click', processDisable)
-  document.getElementById('playbackDisabled').checked = updateDisable
+
 }
 
 function processMouseOver(event) {
@@ -227,6 +239,7 @@ function processSilence(event) {
 }
 
 function processDisable(event) {
+   startTimer()  // restart time so page doesn't reload while processing event
    if(event.explicitOriginalTarget.checked) {
      updateDisable=true
      processNotification(BASE_URL+'/disable')
@@ -235,7 +248,13 @@ function processDisable(event) {
      updateDisable=false
      processNotification(BASE_URL+'/disable?0')
    }
-   fetchAndUpdateList()
+   setTimeout(fetchAndUpdateList, 200)
+}
+
+function processPathDisable(event) {
+   startTimer()  // restart timer so page doesn't reload while processing event
+   processNotification(BASE_URL+'/disablePath?'+event.target.id.split('-')[0]+'?'+event.target.checked)
+   setTimeout(fetchAndUpdateList, 100)
 }
 
 document.getElementById('update-timer').addEventListener('input', (event) => {
