@@ -29,7 +29,7 @@ module.exports = function (app) {
   const maxDisable = 3600 // max disable all time in seconds
   const playBackTimeOut = 60000 // 60s failsafe override playBack
   var unsubscribes = []
-  var queueActive = false
+  var queueActive = false  // keeps track of running the preCommand
   var playBackActive = false
   var hasFestival = false
   var pluginProps
@@ -244,7 +244,7 @@ module.exports = function (app) {
         pluginProps.preCommand &&
         pluginProps.preCommand.length > 0
       ) {
-        queueActive = true // quickly block a 2nd notification causing overlap of playback
+        queueActive = true
         const { exec } = require('node:child_process')
         app.debug('pre-command: %s', pluginProps.preCommand)
         try {
@@ -277,10 +277,10 @@ module.exports = function (app) {
       } else if (soundEvent.audioFile) {
         let command = pluginProps.alarmAudioPlayer
         soundFile = soundEvent.audioFile
-
         if (soundFile && soundFile.charAt(0) != '/') {
           soundFile = fspath.join(__dirname, 'sounds', soundFile)
         }
+
         if (fs.existsSync(soundFile)) {
           let args = [soundFile]
           if (pluginProps.alarmAudioPlayerArguments && pluginProps.alarmAudioPlayerArguments.length > 0) {
@@ -328,28 +328,31 @@ module.exports = function (app) {
         audioEvent = Array.from(alertQueue)[queueIndex][1]
         //app.debug("AE", audioEvent)
 
+          // Q item not playable yet, move to next Q item, if no playable sleep
         if ((audioEvent.playAfter != 0 && audioEvent.playAfter > now()) || audioEvent.disabled) {
-          // Q item not playable yet
           queueIndex++
           let playableInQ = 0
           alertQueue.forEach((value, key) => {
             if (!value.playAfter && !value.disabled) playableInQ++
           })
-          //if (playableInQ) processQueue()
-          if (playableInQ)
+          if (playableInQ) {
             delay(100).then(() => {
               processQueue()
             })
-          else {
+          } else {
             if (queueActive) stopProcessingQueue() // rare case when Q was active but now only waiting items
-            //app.debug('Sleeping', ( (audioEvent.playAfter - now()) /1000))
-            delay(1000).then(() => {
+            app.debug('Sleeping', ( (audioEvent.playAfter - now()) /1000))
+            delay(5000).then(() => {  // Q only contains non-playable items
               processQueue()
             })
           }
+
+          //  Q item playable - play!
         } else if (audioEvent.played < audioEvent.numNotifications) {
           playBackActive = now() // timer / semaphore to prevent overlap of playback
           playEvent(audioEvent)
+
+          //  Process Q item(s)
         } else {
           if (audioEvent.mode != 'continuous') {
             // single play so delete
@@ -359,7 +362,8 @@ module.exports = function (app) {
             audioEvent.played = 0
           }
           if (alertQueue.size > 0) {
-            if (++queueIndex >= alertQueue.size) queueIndex = 0 // next in queue
+            // increment to next in queue
+            if (++queueIndex >= alertQueue.size) queueIndex = 0 
             delay(250).then(() => {
               processQueue()
             })
@@ -898,7 +902,6 @@ module.exports = function (app) {
    */
     }
   }
-
   //
 
   plugin.registerWithRouter = (router) => {
@@ -1006,7 +1009,6 @@ module.exports = function (app) {
       })
       res.send('szv ok')
     })
-
     /*
     router.get("/ignoreLast", (req, res) => {
       if(!lastAlert) { res.send("No alerts to mute.") ; return }
