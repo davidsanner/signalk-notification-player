@@ -173,17 +173,24 @@ module.exports = function (app) {
                 args.mode = 'continuous'
               }
 
-              alertQueue.set(nPath, args)
-              lastAlert = args.path + '.' + args.state
-              alertLog[args.path + '.' + args.state] = { message: args.message, timestamp: eventTimeStamp }
+              if(args.state != 'normal') {
+                if(args.disabled != true) {
+                  alertQueue.set(nPath, args)
+                  lastAlert = args.path + '.' + args.state
+                  alertLog[args.path + '.' + args.state] = { message: args.message, timestamp: eventTimeStamp }
 
-              app.debug(
-                'ADD2Q:' + args.path.substring(args.path.indexOf('.') + 1),
-                args.mode,
-                args.state,
-                'qSize:' + alertQueue.size
-              )
-              processQueue()
+                  app.debug(
+                    'ADD2Q:' + args.path.substring(args.path.indexOf('.') + 1),
+                    args.mode,
+                    args.state,
+                    'qSize:' + alertQueue.size
+                  )
+                  processQueue()
+                }
+              } else {
+                app.debug("RMFQ:"+ args.path.substring(args.path.indexOf('.') + 1), args.state, 'qSize:' + alertQueue.size)
+                if ( alertQueue.has(nPath) ) alertQueue.delete(nPath)
+              }
 
               if (msgServiceAlert && pluginProps.slackWebhookURL != null) {
                 app.debug('Slack send:', args.path, args.message)
@@ -200,7 +207,8 @@ module.exports = function (app) {
             }
             // resolved: state's notificationType has no continuous or single notice method, typical back to normal state
             else if (alertQueue.has(nPath) && !notice && !continuous) {
-              if (alertQueue.get(nPath).played != true) {
+              app.debug('resolved: no method, removing')
+              if (alertQueue.get(nPath).played != true && alertQueue.get(nPath).playAfter < now()) { // unless in playAfter state
                 // try and play at least once but if cleared then only once
                 alertQueue.get(nPath).mode = 'notice'
               } else alertQueue.delete(nPath) // no continuous or single notice method for this state so delete
@@ -208,8 +216,8 @@ module.exports = function (app) {
           } else if (alertQueue.has(nPath)) {
             // silenced: no method or sound method value
             app.debug('silenced: no method or sound method value, removing')
-            if (alertQueue.get(nPath).played != true) {
-              // try and play at least once but if cleared then only once
+            if (alertQueue.get(nPath).played != true && alertQueue.get(nPath).playAfter < now()) {
+              // try and play at least once but if cleared then only once, may change thinking on this
               alertQueue.get(nPath).mode = 'notice'
             } else alertQueue.delete(nPath)
           }
@@ -657,8 +665,8 @@ module.exports = function (app) {
                 type: 'number'
               },
               playAfter: {
-                title: 'Delay Before Notification is Played',
-                description: 'Seconds notification must remain in this zone state before notifcation is played',
+                title: 'Minimum Time Notification Must Remain in Zone Before Notification is Played',
+                description: 'Limit Transient Notifications: Seconds notification/value must remain in this zone state before notifcation is played',
                 type: 'number',
                 default: 0
               },
@@ -793,7 +801,7 @@ module.exports = function (app) {
         const nvalue = app.getSelfPath(key)
         if (nvalue.value.state != 'normal' && nvalue.value.state != 'nominal') {
           // only clear -> set-to-normal elevated notification states
-          app.debug('Resolve Clearing:', key)
+          //app.debug('Resolve Clearing:', key)
           const delta = {
             updates: [
               {
