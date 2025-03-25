@@ -29,7 +29,7 @@ module.exports = function (app) {
   const maxDisable = 3600 // max disable all time in seconds
   const playBackTimeOut = 60000 // 60s failsafe override playBack
   var unsubscribes = []
-  var queueActive = false  // keeps track of running the preCommand
+  var queueActive = false // keeps track of running the preCommand
   var playBackActive = false
   var hasFestival = false
   var pluginProps
@@ -173,9 +173,9 @@ module.exports = function (app) {
                 args.mode = 'continuous'
               }
 
-              if(args.state != 'normal') {
-                if(args.disabled != true) {
-                  alertQueue.set(nPath, args)
+              if (args.state != 'normal') {
+                if (args.disabled != true) {
+                  alertQueue.set(nPath, args) // active notification state, path not disabled, Q it!
                   lastAlert = args.path + '.' + args.state
                   alertLog[args.path + '.' + args.state] = { message: args.message, timestamp: eventTimeStamp }
 
@@ -187,9 +187,9 @@ module.exports = function (app) {
                   )
                   processQueue()
                 }
-              } else {
-                app.debug("RMFQ:"+ args.path.substring(args.path.indexOf('.') + 1), args.state, 'qSize:' + alertQueue.size)
-                if ( alertQueue.has(nPath) ) alertQueue.delete(nPath)
+              } else if (alertQueue.has(nPath)) {
+                alertQueue.delete(nPath)
+                app.debug('RMFQ:', args.path.substring(args.path.indexOf('.') + 1), 'qSize:', alertQueue.size)
               }
 
               if (msgServiceAlert && pluginProps.slackWebhookURL != null) {
@@ -349,7 +349,7 @@ module.exports = function (app) {
             })
           } else {
             if (queueActive) stopProcessingQueue() // rare case when Q was active but now only waiting items
-            app.debug('Sleeping', ( (audioEvent.playAfter - now()) /1000))
+            app.debug('Sleeping', (audioEvent.playAfter - now()) / 1000)
             delay(5000).then(() => {  // Q only contains non-playable items
               processQueue()
             })
@@ -371,7 +371,7 @@ module.exports = function (app) {
           }
           if (alertQueue.size > 0) {
             // increment to next in queue
-            if (++queueIndex >= alertQueue.size) queueIndex = 0 
+            if (++queueIndex >= alertQueue.size) queueIndex = 0
             delay(250).then(() => {
               processQueue()
             })
@@ -666,7 +666,8 @@ module.exports = function (app) {
               },
               playAfter: {
                 title: 'Minimum Time Notification Must Remain in Zone Before Notification is Played',
-                description: 'Limit Transient Notifications: Seconds notification/value must remain in this zone state before notifcation is played',
+                description:
+                  'Limit Transient Notifications: Seconds notification/value must remain in this zone state before notifcation is played',
                 type: 'number',
                 default: 0
               },
