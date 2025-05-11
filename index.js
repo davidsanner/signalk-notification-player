@@ -16,7 +16,7 @@
 const _ = require('lodash')
 const fs = require('fs')
 const fspath = require('path')
-const child_process = require('child_process')
+const { child_process, execSync, spawnSync } = require('child_process')
 const say = require('say')
 const SlackNotify = require('slack-notify')
 
@@ -53,14 +53,19 @@ module.exports = function (app) {
     if (!pluginProps.repeatGap) pluginProps.repeatGap = 0
 
     if (process.platform === 'linux') {
-      // quick check if festival installed for linux
-      process.env.PATH.replace(/["]+/g, '')
-        .split(fspath.delimiter)
-        .filter(Boolean)
-        .forEach((element) => {
-          if (fs.existsSync(element + '/festival')) hasFestival = true
-        })
-      if (!hasFestival) app.error('Error: please install festival package')
+      const pkgs = ['festival', 'mpg123'];
+      pkgs.forEach(pkg => {
+        try {
+          execSync(`which ${pkg}`, {stdio: 'ignore'});
+        } catch {
+          const result = spawnSync('sudo', ['apt', 'install', '-y', pkg], {stdio: 'inherit'});
+          if (result.status !== 0) {
+            console.error(`${plugin.id}: Failed to install ${pkg}, install it manually and restart the plugin.`);
+            process.exit(1);
+          }
+          console.log(`${plugin.id}: Installed missing package, ${pkg}`);
+        }
+      });
     }
     if (pluginProps.mappings)
       pluginProps.mappings.forEach((m) => {
