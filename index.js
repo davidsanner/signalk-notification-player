@@ -53,19 +53,21 @@ module.exports = function (app) {
     if (!pluginProps.repeatGap) pluginProps.repeatGap = 0
 
     if (process.platform === 'linux') {
-      const pkgs = ['festival', 'mpg123'];
-      pkgs.forEach(pkg => {
-        try {
-          execSync(`which ${pkg}`, {stdio: 'ignore'});
-        } catch {
-          const result = spawnSync('sudo', ['apt', 'install', '-y', pkg], {stdio: 'inherit'});
-          if (result.status !== 0) {
-            console.error(`${plugin.id}: Failed to install ${pkg}, install it manually and restart the plugin.`);
-            process.exit(1);
+      if (pluginProps.installAudioPkgs) {
+        const pkgs = ['festival', 'mpg123'];
+        pkgs.forEach(pkg => {
+          try {
+            execSync(`which ${pkg}`, {stdio: 'ignore'});
+          } catch {
+            const result = spawnSync('sudo', ['apt', 'install', '-y', pkg], {stdio: 'inherit'});
+            if (result.status !== 0) {
+              console.error(`${plugin.id}: Failed to install ${pkg}, install it manually and restart the plugin.`);
+              process.exit(1);
+            }
+            console.log(`${plugin.id}: Installed missing package, ${pkg}`);
           }
-          console.log(`${plugin.id}: Installed missing package, ${pkg}`);
-        }
-      });
+        });
+      }
     }
     if (pluginProps.mappings)
       pluginProps.mappings.forEach((m) => {
@@ -578,6 +580,12 @@ module.exports = function (app) {
           title: 'Custom Command After Playing Notification',
           description: 'optional command to run after playing/speaking',
           type: 'string'
+        },
+        installAudioPkgs: {
+          title: 'Audio Packages, festival & mpg123 (Linux Only)',
+          description: 'Select to install missing audio packages',
+          type: 'boolean',
+          default: false
         },
         alarmAudioPlayer: {
           title: 'Audio Player',
