@@ -54,6 +54,11 @@ module.exports = function (app) {
 
     if (process.platform === 'linux') {
       if (pluginProps.installAudioPkgs) {
+        try {
+          execSync('sudo apt update', {stdio: 'inherit'});
+        } catch (e) {
+          console.error(`${plugin.id}: Failed to run 'sudo apt update'. Please update your package lists manually.`);
+        }
         const pkgs = ['festival', 'mpg123'];
         pkgs.forEach(pkg => {
           try {
