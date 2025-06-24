@@ -5,6 +5,7 @@ const BASE_URL = '/plugins/signalk-notification-player'
 const SELF_URL = '/signalk/v1/api/vessels/self'
 const CONFIG_URL = '/admin/#/serverConfiguration/plugins/signalk-notification-player'
 let popupActive = false // keep popup data from reloading when main table reloads
+let popupActiveState = false // keep popup data from reloading when main table reloads
 let vesselName = ''
 let zones = ''
 let listEntries = 0
@@ -143,7 +144,7 @@ function updateList(data) {
     if (value.disabled) disabledStyle = 'background-color: #7E3817'
     else disabledStyle = ''
 
-    row.innerHTML = `<td id="${pathTrimmed}" style="${disabledStyle}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td bgcolor="${bgc}">${state}</td><td><input id=${path}-disabled type="checkbox"}></td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
+    row.innerHTML = `<td id="${pathTrimmed}" style="${disabledStyle}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td id="${pathTrimmed}-state" bgcolor="${bgc}">${state}</td><td><input id=${path}-disabled type="checkbox"}></td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
     table.appendChild(row)
     document.getElementById((id = path + '-disabled')).checked = value.disabled
   })
@@ -160,8 +161,16 @@ function updateList(data) {
       popupActive = false
       fetchAndUpdateList()
     })
+    document.getElementById(pathTrimmed+"-state").addEventListener('mouseout', function () {
+      document.getElementById('popupContent').style.display = 'none'
+      popupActiveState = false
+      fetchAndUpdateList()
+    })
     if (!popupActive) {
       document.getElementById(pathTrimmed).addEventListener('mouseover', processMouseOver)
+    }
+    if (!popupActiveState) {
+      document.getElementById(pathTrimmed+"-state").addEventListener('mouseover', processMouseOverState)
     }
   })
 }
@@ -189,6 +198,39 @@ function processMouseOver(event) {
     event.target.id +
     '</div><hr><div id=zones>loading zones...</div>'
   document.getElementById('popupContent').style.display = 'block'
+}
+
+async function processMouseOverState(event) {
+  maxShown = 5
+  popupActiveState = true
+  path = event.target.id.substring(0,event.target.id.indexOf('-'))
+  document.getElementById('popupContent').innerHTML =
+    'Last Notification:&nbsp;<div style="display:inline; font-size: medium; color:#800;">' + path +
+    '</div><hr><div id=zones>loading...</div>'
+  document.getElementById('popupContent').style.display = 'block'
+  getJSON(BASE_URL + '/log?' + "notifications." + path + "?" + maxShown).then(data => {
+      if (data.includes('Cannot GET ')) document.getElementById('zones').innerHTML = '---'
+      text = JSON.stringify(data)
+      text = text.replaceAll('},{', '}<hr>{')
+      text = text.replace(/[\[\]]/g, '')
+      let html = "<table>"
+      for (const item of data) {
+        if(typeof item.value === 'number') item.value = item.value.toPrecision(5)
+        html += "<tr><td>State: "+item.state+"</td><td>Value: "+item.value+"</td><td>Since: "+formattedDT(new Date(item.datetime))+"</td></tr>";
+      }
+      html += "</table>"
+      document.getElementById('zones').innerHTML = html
+  });
+}
+
+function formattedDT( date ) {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const seconds = date.getSeconds().toString().padStart(2, '0')
+  return(`${year}/${month}/${day} ${hours}:${minutes}:${seconds}`)
 }
 
 async function fetchAndUpdateList() {
