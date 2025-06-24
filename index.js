@@ -38,10 +38,12 @@ module.exports = function (app) {
   var queueIndex = 0
   var muteUntil = 0
   var vesselName
-  var listFile
+  var listFile, logFile
   var alertQueue = new Map()
-  var alertLog = {}
-  var notificationList = {}
+  var alertLog = {}   // used to keep track of recent alerts to control bouncing in/out of zone
+  var notificationList = {} // notification state, disabled setting saved to disk
+  var notificationLog = []  // long term timestamped log for every notification event
+
   const notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
   var notificationSounds = { emergency: notificationFiles[0], alarm: notificationFiles[1], warn: notificationFiles[2], alert: notificationFiles[3] }
   var enableNotificationTypes = { emergency: 'continuous', alarm: 'continuous', warn: 'single notice', alert: 'single notice' }
@@ -50,6 +52,7 @@ module.exports = function (app) {
 
   plugin.start = function (props) {
     pluginProps = props
+
     if (!pluginProps.repeatGap) pluginProps.repeatGap = 0
 
     if (process.platform === 'linux') {
@@ -71,6 +74,9 @@ module.exports = function (app) {
 
     listFile = fspath.join(app.getDataDirPath(), 'notificationList.json')
     readListFile(listFile)
+    logFile = fspath.join(app.getDataDirPath(), 'notificationLog.json')
+    readLogFile(logFile)
+
     //const openapi = require('./openApi.json'); plugin.getOpenApi = () => openapi
     subscribeToNotifications()
     delay(4000).then(() => {
@@ -103,11 +109,11 @@ module.exports = function (app) {
         value = notifcation.value
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
-        if (typeof notificationList[nPath] != 'undefined')
-          notificationList[nPath] = { state: value.state, disabled: notificationList[nPath].disabled }
-        else notificationList[nPath] = { state: value.state, disabled: false }
 
         if (value != null && typeof value.state != 'undefined') {
+          if (typeof notificationList[nPath] != 'undefined')
+            notificationList[nPath] = { state: value.state, disabled: notificationList[nPath].disabled }
+          else notificationList[nPath] = { state: value.state, disabled: false }
           if (typeof value.method != 'undefined' && value.method.indexOf('sound') != -1) {
             let continuous = false
             let notice = false
@@ -185,12 +191,15 @@ module.exports = function (app) {
                     args.state,
                     'qSize:' + alertQueue.size
                   )
+
                   processQueue()
                 }
               } else if (alertQueue.has(nPath)) {
                 alertQueue.delete(nPath)
                 app.debug('RMFQ:', args.path.substring(args.path.indexOf('.') + 1), 'qSize:', alertQueue.size)
               }
+
+              logNotification({ path: args.path, state: args.state, mode: args.mode, disabled: args.disabled })
 
               if (msgServiceAlert && pluginProps.slackWebhookURL != null) {
                 app.debug('Slack send:', args.path, args.message)
@@ -220,6 +229,9 @@ module.exports = function (app) {
               // try and play at least once but if cleared then only once, may change thinking on this
               alertQueue.get(nPath).mode = 'notice'
             } else alertQueue.delete(nPath)
+          }
+          if(value.state == 'normal') { // add normal states
+            logNotification({ path: nPath, state: value.state })
           }
         }
       }) //  end loop for each notification update
@@ -349,7 +361,7 @@ module.exports = function (app) {
             })
           } else {
             if (queueActive) stopProcessingQueue() // rare case when Q was active but now only waiting items
-            app.debug('Sleeping', (audioEvent.playAfter - now()) / 1000)
+            //app.debug('Sleeping', (audioEvent.playAfter - now()) / 1000)
             delay(5000).then(() => {  // Q only contains non-playable items
               processQueue()
             })
@@ -383,6 +395,59 @@ module.exports = function (app) {
       } else {
         if (queueActive) stopProcessingQueue()
         app.debug('Queue Empty, waiting ...')
+      }
+    }
+  }
+  function logNotification(args) {
+    arg2Log = Object.assign({}, args)
+    arg2Log.datetime = now()
+    const lastEvent = notificationLog.findLast(item => item.path === args.path)
+    if (!lastEvent || lastEvent.state != args.state){
+      try {
+      //process.nextTick(() => {  // weird hack to get updated value, w/o async call gets prev value
+        if (typeof app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)) != 'undefined') {
+          if( "navigation.anchor" == args.path.substring(args.path.indexOf('.') + 1) )  // handle anchor watch API
+            arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).distanceFromBow.value
+           else
+            arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).value
+        } else
+          arg2Log.value = null
+        if(!fs.existsSync(logFile)) {
+          fs.writeFileSync(logFile, JSON.stringify(arg2Log))
+        } else {
+          fs.appendFileSync(logFile, ",\n"+JSON.stringify(arg2Log))
+        }
+      //})
+      } catch (e) { app.error('Could not write:', logFile, '-', e) }
+      notificationLog.push(arg2Log)
+    }
+    maintainLog(false)
+  }
+
+  function maintainLog(forceCheck) {   // Manage growing notificationLog and logFile size / always trouble
+    if( notificationLog.length > 25000 || forceCheck ) {  //  check array size - edge case, or force check logFile at startup
+      notificationLog = notificationLog.slice(-20000) 
+      if( fs.statSync(logFile).size > 5242880) {   // chop down log file to something reasonable @ max 5 megs?
+      //if( fs.statSync(logFile).size > 10000) {   // TESTING 
+
+        const maxEntries = 150;  // truncate to max entries per path (approx 1M w/ 50 paths)
+
+        try {
+          jsonArray = JSON.parse("["+fs.readFileSync(logFile, 'utf-8')+"]")  // wrap in [] 
+
+          const lastEntries = jsonArray.filter((item, index, arr) => {
+            const indices = arr
+              .map((el, i) => el.path === item.path ? i : -1)
+              .filter(i => i !== -1);
+            return indices.slice(-maxEntries).includes(index);
+          });
+
+          const newJsonString = lastEntries.map(obj => JSON.stringify(obj)).join(',\n');
+          fs.writeFileSync(logFile, newJsonString, 'utf-8'); // Overwrite the file with the truncated content
+          app.debug(`Log file truncated to the last ${maxEntries} objects.`);
+        } catch (error) {
+          app.error('Error:', error);
+        }
       }
     }
   }
@@ -421,6 +486,38 @@ module.exports = function (app) {
           }
         }
       }
+    }
+  }
+
+  function readLogFile(logFile) {
+    if (fs.existsSync(logFile)) {
+      let logString
+      let logArray
+      try {
+        maintainLog(true)  // trim log file if needed
+        logString = fs.readFileSync(logFile, 'utf8')
+      } catch (e) {
+        app.error('Could not read ' + logFile + ' - ' + e)
+        return
+      }
+
+      try {
+        logArray = JSON.parse("["+logString+"]") // wrap with []
+      } catch (e) {
+        app.error('Could not parse logfile ' + logFile + e)
+        return
+      }
+      for (const logEntry of Object.values(logArray)) {
+        notificationLog.push(logEntry)
+      }
+      maxEntries = 50   // Trim notificationLog array down to last 50 entries for each path
+      const lastEntries = notificationLog.filter((item, index, arr) => {
+        const indices = arr
+          .map((el, i) => el.path === item.path ? i : -1)
+          .filter(i => i !== -1);
+        return indices.slice(-maxEntries).includes(index);
+      });
+      notificationLog = lastEntries
     }
   }
 
@@ -767,7 +864,7 @@ module.exports = function (app) {
         // load notificationList
         path = 'notifications.' + update.path
         const nvalue = app.getSelfPath(path)
-        if (nvalue.value.state != 'normal') {
+        if (nvalue?.value?.state !== undefined && nvalue.value.state != 'normal') {
           app.debug('Silencing PATH:', path)
           const nmethod = nvalue.value.method.filter((item) => item !== 'sound')
           const delta = {
@@ -951,6 +1048,16 @@ module.exports = function (app) {
       } catch (e) {
         app.error('Could not write ' + listFile + ' - ' + e)
       }
+    })
+
+
+    router.get('/log', (req, res) => {
+      const path = req._parsedUrl.query.split('?')[0]
+      const numEvents = req._parsedUrl.query.split('?')[1]
+      if ( numEvents && !(numEvents > 0) ) numEvents = 10  // default to last 10 events
+      const logSnip = JSON.stringify(notificationLog.filter(entry => entry.path === path).sort((a, b) => b.datetime - a.datetime).slice(0,numEvents))
+      res.set({ 'Content-Type': 'application/json' })
+      res.send(logSnip)
     })
 
     router.get('/disable', (req, res) => {
