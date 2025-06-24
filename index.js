@@ -40,9 +40,9 @@ module.exports = function (app) {
   var vesselName
   var listFile, logFile
   var alertQueue = new Map()
-  var alertLog = {}   // used to keep track of recent alerts to control bouncing in/out of zone
+  var alertLog = {} // used to keep track of recent alerts to control bouncing in/out of zone
   var notificationList = {} // notification state, disabled setting saved to disk
-  var notificationLog = []  // long term timestamped log for every notification event
+  var notificationLog = [] // long term timestamped log for every notification event
 
   const notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
   var notificationSounds = { emergency: notificationFiles[0], alarm: notificationFiles[1], warn: notificationFiles[2], alert: notificationFiles[3] }
@@ -130,7 +130,7 @@ module.exports = function (app) {
               value.state &&
               (notification = pluginProps.mappings.find((ppm) => ppm.path === nPath && ppm.state === value.state))
             ) {
-              //app.debug("Found custom notification", notification )
+              //app.debug('Found custom notification', notification )
               if (notification.alarmAudioFile) audioFile = notification.alarmAudioFile
               if (notification.alarmType == 'continuous') continuous = true
               else if (notification.alarmType == 'single notice') notice = true
@@ -257,7 +257,7 @@ module.exports = function (app) {
   function playEvent(soundEvent) {
     soundEvent.played++
     try {
-      //app.debug("SOUND EVENT:",soundEvent)
+      //app.debug('SOUND EVENT:',soundEvent)
       if (
         notificationPrePost[soundEvent.state] != false &&
         queueActive != true &&
@@ -346,7 +346,7 @@ module.exports = function (app) {
           queueIndex = 0
         }
         audioEvent = Array.from(alertQueue)[queueIndex][1]
-        //app.debug("AE", audioEvent)
+        //app.debug('AE', audioEvent)
 
           // Q item not playable yet, move to next Q item, if no playable sleep
         if ((audioEvent.playAfter != 0 && audioEvent.playAfter > now()) || audioEvent.disabled) {
@@ -401,24 +401,24 @@ module.exports = function (app) {
   function logNotification(args) {
     arg2Log = Object.assign({}, args)
     arg2Log.datetime = now()
-    const lastEvent = notificationLog.findLast(item => item.path === args.path)
-    if (!lastEvent || lastEvent.state != args.state){
+    const lastEvent = notificationLog.findLast((item) => item.path === args.path)
+    if (!lastEvent || lastEvent.state != args.state) {
       try {
-      //process.nextTick(() => {  // weird hack to get updated value, w/o async call gets prev value
+        //process.nextTick(() => {  // weird hack to get updated value, w/o async call gets prev value
         if (typeof app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)) != 'undefined') {
-          if( "navigation.anchor" == args.path.substring(args.path.indexOf('.') + 1) )  // handle anchor watch API
+          if( 'navigation.anchor' == args.path.substring(args.path.indexOf('.') + 1) )  // handle anchor watch API
             arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).distanceFromBow.value
-           else
-            arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).value
-        } else
-          arg2Log.value = null
-        if(!fs.existsSync(logFile)) {
+          else arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).value
+        } else arg2Log.value = null
+        if (!fs.existsSync(logFile)) {
           fs.writeFileSync(logFile, JSON.stringify(arg2Log))
         } else {
-          fs.appendFileSync(logFile, ",\n"+JSON.stringify(arg2Log))
+          fs.appendFileSync(logFile, ',\n' + JSON.stringify(arg2Log))
         }
-      //})
-      } catch (e) { app.error('Could not write:', logFile, '-', e) }
+        //})
+      } catch (e) {
+        app.error('Could not write:', logFile, '-', e)
+      }
       notificationLog.push(arg2Log)
     }
     maintainLog(false)
@@ -430,23 +430,21 @@ module.exports = function (app) {
       if( fs.statSync(logFile).size > 5242880) {   // chop down log file to something reasonable @ max 5 megs?
       //if( fs.statSync(logFile).size > 10000) {   // TESTING 
 
-        const maxEntries = 150;  // truncate to max entries per path (approx 1M w/ 50 paths)
+        const maxEntries = 150 // truncate to max entries per path (approx 1M w/ 50 paths)
 
         try {
-          jsonArray = JSON.parse("["+fs.readFileSync(logFile, 'utf-8')+"]")  // wrap in [] 
+          jsonArray = JSON.parse('[' + fs.readFileSync(logFile, 'utf-8') + ']') // wrap in []
 
           const lastEntries = jsonArray.filter((item, index, arr) => {
-            const indices = arr
-              .map((el, i) => el.path === item.path ? i : -1)
-              .filter(i => i !== -1);
-            return indices.slice(-maxEntries).includes(index);
-          });
+            const indices = arr.map((el, i) => (el.path === item.path ? i : -1)).filter((i) => i !== -1)
+            return indices.slice(-maxEntries).includes(index)
+          })
 
-          const newJsonString = lastEntries.map(obj => JSON.stringify(obj)).join(',\n');
-          fs.writeFileSync(logFile, newJsonString, 'utf-8'); // Overwrite the file with the truncated content
-          app.debug(`Log file truncated to the last ${maxEntries} objects.`);
+          const newJsonString = lastEntries.map((obj) => JSON.stringify(obj)).join(',\n')
+          fs.writeFileSync(logFile, newJsonString, 'utf-8') // Overwrite the file with the truncated content
+          app.debug(`Log file truncated to the last ${maxEntries} objects.`)
         } catch (error) {
-          app.error('Error:', error);
+          app.error('Error:', error)
         }
       }
     }
@@ -494,7 +492,7 @@ module.exports = function (app) {
       let logString
       let logArray
       try {
-        maintainLog(true)  // trim log file if needed
+        maintainLog(true) // trim log file if needed
         logString = fs.readFileSync(logFile, 'utf8')
       } catch (e) {
         app.error('Could not read ' + logFile + ' - ' + e)
@@ -502,7 +500,7 @@ module.exports = function (app) {
       }
 
       try {
-        logArray = JSON.parse("["+logString+"]") // wrap with []
+        logArray = JSON.parse('[' + logString + ']') // wrap with []
       } catch (e) {
         app.error('Could not parse logfile ' + logFile + e)
         return
@@ -510,13 +508,11 @@ module.exports = function (app) {
       for (const logEntry of Object.values(logArray)) {
         notificationLog.push(logEntry)
       }
-      maxEntries = 50   // Trim notificationLog array down to last 50 entries for each path
+      maxEntries = 50 // Trim notificationLog array down to last 50 entries for each path
       const lastEntries = notificationLog.filter((item, index, arr) => {
-        const indices = arr
-          .map((el, i) => el.path === item.path ? i : -1)
-          .filter(i => i !== -1);
-        return indices.slice(-maxEntries).includes(index);
-      });
+        const indices = arr.map((el, i) => (el.path === item.path ? i : -1)).filter((i) => i !== -1)
+        return indices.slice(-maxEntries).includes(index)
+      })
       notificationLog = lastEntries
     }
   }
@@ -926,7 +922,7 @@ module.exports = function (app) {
   ////
 
   function handleDisable(context, path, value, callback) {
-    //app.debug("handleDisable", context, path, value)
+    //app.debug('handleDisable', context, path, value)
     if (value == true) {
       //if( muteUntil == 0 )
       if (muteUntil - maxDisable * 1000 < now() - 1000) {
@@ -974,7 +970,7 @@ module.exports = function (app) {
       if( laVal = alertLog[lastAlert] ) {
         laVal.timestamp = now() + ( 1200 * 1000 )   // 20 minutes
         alertLog[lastAlert] = laVal   // set lastAlert time in the future to silence it until then
-        alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf(".")))   // clear active Q entry / any type
+        alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf('.')))   // clear active Q entry / any type
       }
       return { state: 'COMPLETED', statusCode: 200 }
   }
@@ -1025,7 +1021,7 @@ module.exports = function (app) {
       // disable path specific playback
       res.send('Ok')
       const path = req._parsedUrl.query.split('?')[0]
-      //app.debug("disablePath:", path+'='+req._parsedUrl.query.split('?')[1])
+      //app.debug('disablePath:', path+'='+req._parsedUrl.query.split('?')[1])
       if (typeof notificationList[path] == 'undefined') return
 
       if (req._parsedUrl.query.split('?')[1] == 'true') {
@@ -1054,8 +1050,13 @@ module.exports = function (app) {
     router.get('/log', (req, res) => {
       const path = req._parsedUrl.query.split('?')[0]
       const numEvents = req._parsedUrl.query.split('?')[1]
-      if ( numEvents && !(numEvents > 0) ) numEvents = 10  // default to last 10 events
-      const logSnip = JSON.stringify(notificationLog.filter(entry => entry.path === path).sort((a, b) => b.datetime - a.datetime).slice(0,numEvents))
+      if (numEvents && !(numEvents > 0)) numEvents = 10 // default to last 10 events
+      const logSnip = JSON.stringify(
+        notificationLog
+          .filter((entry) => entry.path === path)
+          .sort((a, b) => b.datetime - a.datetime)
+          .slice(0, numEvents)
+      )
       res.set({ 'Content-Type': 'application/json' })
       res.send(logSnip)
     })
@@ -1126,24 +1127,24 @@ module.exports = function (app) {
       res.send('szv ok')
     })
     /*
-    router.get("/ignoreLast", (req, res) => {
-      if(!lastAlert) { res.send("No alerts to mute.") ; return }
+    router.get('/ignoreLast', (req, res) => {
+      if(!lastAlert) { res.send('No alerts to mute.') ; return }
       var muteTime = parseInt(req._parsedUrl.query)
       if ( isNaN(muteTime) ) { muteTime = 600 }   // default 600 seconds
       if (muteTime > maxDisable) {  // max 1hr
         muteTime = maxDisable
-        res.send("Muting "+lastAlert+ " playback for "+muteTime+" seconds, maxmium allowed.")
+        res.send('Muting '+lastAlert+ ' playback for '+muteTime+' seconds, maxmium allowed.')
       } else {
-        res.send("Muting "+lastAlert+ " playback for "+muteTime+" seconds")
+        res.send('Muting '+lastAlert+ ' playback for '+muteTime+' seconds')
       }
       if( laVal = alertLog[lastAlert] ) {
         laVal.timestamp = now() + ( muteTime * 1000 )
         alertLog[lastAlert] = laVal   // set lastAlert time in the future to silence it until then
-        alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf(".")))   // clear active Q entry / any type
+        alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf('.')))   // clear active Q entry / any type
       }
-      app.debug("Muting PB for", lastAlert, "next", muteTime, "seconds")
+      app.debug('Muting PB for', lastAlert, 'next', muteTime, 'seconds')
       //for (type in enableNotificationTypes) { app.debug(type) }
-      //app.debug("alertLog:", alertLog) ; //app.debug("alertQueue:", alertQueue)
+      //app.debug('alertLog:', alertLog) ; //app.debug('alertQueue:', alertQueue)
     })
 */
   } // end registerWithRouter()
