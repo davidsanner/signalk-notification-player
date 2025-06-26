@@ -162,7 +162,7 @@ function updateList(data) {
       fetchAndUpdateList()
     })
     document.getElementById(pathTrimmed+"-state").addEventListener('mouseout', function () {
-      document.getElementById('popupContent').style.display = 'none'
+      document.getElementById('popupContentState').style.display = 'none'
       popupActiveState = false
       fetchAndUpdateList()
     })
@@ -201,15 +201,15 @@ function processMouseOver(event) {
 }
 
 async function processMouseOverState(event) {
-  maxShown = 5
+  maxShown = 8
   popupActiveState = true
   path = event.target.id.substring(0,event.target.id.indexOf('-'))
-  document.getElementById('popupContent').innerHTML =
-    'Last Notification:&nbsp;<div style="display:inline; font-size: medium; color:#800;">' + path +
-    '</div><hr><div id=zones>loading...</div>'
-  document.getElementById('popupContent').style.display = 'block'
+  document.getElementById('popupContentState').innerHTML =
+    'Last Notification:&nbsp;<div style="display:inline; font-size: small; color:#800;">' + path +
+    '</div><hr><div id=zonesState>loading...</div>'
+  document.getElementById('popupContentState').style.display = 'block'
   getJSON(BASE_URL + '/log?' + "notifications." + path + "?" + maxShown).then(data => {
-      if (data.includes('Cannot GET ')) document.getElementById('zones').innerHTML = '---'
+      if (data.includes('Cannot GET ')) document.getElementById('zonesState').innerHTML = '---'
       text = JSON.stringify(data)
       text = text.replaceAll('},{', '}<hr>{')
       text = text.replace(/[\[\]]/g, '')
@@ -219,7 +219,7 @@ async function processMouseOverState(event) {
         html += "<tr><td>State: "+item.state+"</td><td>Value: "+item.value+"</td><td>Since: "+formattedDT(new Date(item.datetime))+"</td></tr>";
       }
       html += "</table>"
-      document.getElementById('zones').innerHTML = html
+      document.getElementById('zonesState').innerHTML = html
   });
 }
 
