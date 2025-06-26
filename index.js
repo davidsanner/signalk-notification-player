@@ -399,15 +399,17 @@ module.exports = function (app) {
     }
   }
   function logNotification(args) {
-    arg2Log = { path: args.path, state: args.state }
-    const lastEvent = notificationLog.findLast((item) => item.path === args.path)
+    path = args.path.substring(args.path.indexOf('.') + 1)
+    arg2Log = { path: path, state: args.state }
+
+    const lastEvent = notificationLog.findLast((item) => item.path === path)
     if (!lastEvent || lastEvent.state != args.state) {
       try {
         //process.nextTick(() => {  // weird hack to get updated value, w/o async call gets prev value
-        if (typeof app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)) != 'undefined') {
-          if( 'navigation.anchor' == args.path.substring(args.path.indexOf('.') + 1) )  // handle anchor watch API
-            arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).distanceFromBow.value
-          else arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).value
+        if (typeof app.getSelfPath(path != 'undefined')) {
+          if( 'navigation.anchor' == path ) // handle anchor watch API
+            arg2Log.value = app.getSelfPath(path).distanceFromBow.value
+          else arg2Log.value = app.getSelfPath(path).value
         } else arg2Log.value = null
         arg2Log.datetime = now()
         if(args.mode !== undefined) arg2Log.mode = args.mode
