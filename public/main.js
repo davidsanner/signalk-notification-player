@@ -208,7 +208,7 @@ async function processMouseOverState(event) {
     'Last Notification:&nbsp;<div style="display:inline; font-size: small; color:#800;">' + path +
     '</div><hr><div id=zonesState>loading...</div>'
   document.getElementById('popupContentState').style.display = 'block'
-  getJSON(BASE_URL + '/log?' + "notifications." + path + "?" + maxShown).then(data => {
+  getJSON(BASE_URL + '/log?' + path + "?" + maxShown).then(data => {
       if (data.includes('Cannot GET ')) document.getElementById('zonesState').innerHTML = '---'
       text = JSON.stringify(data)
       text = text.replaceAll('},{', '}<hr>{')
