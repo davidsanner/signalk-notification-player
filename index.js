@@ -510,6 +510,11 @@ module.exports = function (app) {
         logArray = JSON.parse('[' + logString + ']') // wrap with []
       } catch (e) {
         app.error('Could not parse logfile ' + logFile + e)
+        try {
+          fs.renameSync(logFile, logFile + "-bck")
+        } catch (e) {
+          app.error('Could not move logfile ' + logFile + e)
+        }
         return
       }
       for (const logEntry of Object.values(logArray)) {
