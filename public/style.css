@@ -64,12 +64,24 @@ tr:nth-child(even) {
 
 .popupContainer {
   display: none;
-  position: relative;
+  position: absolute;
   background-color: #EDEFED;
   border: 4px solid #888;
   border-radius: 8px;
   font-size: 11px;
   padding: 10px;
+  pointer-events: none;
+}
+
+.popupContainerState {
+  display: none;
+  position: absolute;
+  background-color: #EDEFED;
+  border: 4px solid #888;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 10px;
+  pointer-events: none;
 }
 
 #overlay {
