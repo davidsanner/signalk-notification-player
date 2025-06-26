@@ -57,6 +57,10 @@ List all known notifcation states & associated value (json)
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/list
 ```
+List log per notification pass (log?path?numberDisplayed)
+```
+curl http://localhost:3000/plugins/signalk-notification-player/log?navigation.gnss.horizontalDilution?25
+```
 While playback is disabled, incoming notifications will still be queued and played in order, once re-enabled the latest / current notification for a given path will be processed for playback.
 
 Example using authentication data with user pi
@@ -99,6 +103,8 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
+- version 2.5.0:  
+  - Feature: Persistant log of state changes, viewable WebApp mouse over State
 - version 2.4.0:  
   - Feature: Ability to disable/mute individual notifcation paths, state saved between restarts
 - version 2.2.0:  
