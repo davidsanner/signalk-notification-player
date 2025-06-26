@@ -399,8 +399,7 @@ module.exports = function (app) {
     }
   }
   function logNotification(args) {
-    arg2Log = Object.assign({}, args)
-    arg2Log.datetime = now()
+    arg2Log = { path: args.path, state: args.state }
     const lastEvent = notificationLog.findLast((item) => item.path === args.path)
     if (!lastEvent || lastEvent.state != args.state) {
       try {
@@ -410,6 +409,10 @@ module.exports = function (app) {
             arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).distanceFromBow.value
           else arg2Log.value = app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1)).value
         } else arg2Log.value = null
+        arg2Log.datetime = now()
+        if(args.mode !== undefined) arg2Log.mode = args.mode
+        if(args.disabled !== undefined) arg2Log.disabled = args.disabled
+
         if (!fs.existsSync(logFile)) {
           fs.writeFileSync(logFile, JSON.stringify(arg2Log))
         } else {
