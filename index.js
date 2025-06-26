@@ -409,7 +409,10 @@ module.exports = function (app) {
         if (typeof app.getSelfPath(path != 'undefined')) {
           if( 'navigation.anchor' == path ) // handle anchor watch API
             arg2Log.value = app.getSelfPath(path).distanceFromBow.value
-          else arg2Log.value = app.getSelfPath(path).value
+          else {
+            arg2Log.value = app.getSelfPath(path).value
+            if(typeof arg2Log.value === 'number' && !Number.isInteger(arg2Log.value)) arg2Log.value = arg2Log.value.toPrecision(7)
+          }
         } else arg2Log.value = null
         arg2Log.datetime = now()
         if(args.mode !== undefined) arg2Log.mode = args.mode
