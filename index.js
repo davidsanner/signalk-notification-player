@@ -1060,6 +1060,7 @@ module.exports = function (app) {
 
 
     router.get('/log', (req, res) => {
+      // parameters:  none, numEvents OR path, path?numEvents
       var logSnip
       if(req._parsedUrl.query === null) {
         const numEvents = 10
@@ -1068,7 +1069,6 @@ module.exports = function (app) {
         const numEvents = req._parsedUrl.query.split('?')[0]
         logSnip = notificationLog.slice(-numEvents).reverse();
       } else  {
-        // events from single path only, 2nd parameter can set to number of events
         const path = req._parsedUrl.query.split('?')[0]
         const numEvents = req._parsedUrl.query.split('?')[1]
         if (numEvents && !(numEvents > 0)) numEvents = 10 // default to last 10 events
