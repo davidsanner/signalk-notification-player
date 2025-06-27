@@ -105,7 +105,7 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
-- version 2.5.0:  
+- version 2.5.1:  
   - Feature: Persistant log of state changes, viewable via WebApp w/ mouse over State column
 - version 2.4.0:  
   - Feature: Ability to disable/mute individual notifcation paths, state saved between restarts
