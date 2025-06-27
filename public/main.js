@@ -30,7 +30,7 @@ listContent.innerHTML = ''
 headerRow.innerHTML =
   '<th style="font-size: large">' +
   vesselName +
-  ' Notifications</th><th>Value</th><th>Age<br></th><th>State</th><th>Disable</th><th span=2><button id=silenceAll>Silence All</button></th>'
+  ' Notifications</th><th>Value</th><th>Age<br></th><th id="showAllNotifications-state">State</th><th>Disable</th><th span=2><button id=silenceAll>Silence All</button></th>'
 table.appendChild(headerRow)
 listContent.appendChild(table)
 document.getElementById(`silenceAll`).addEventListener('click', processSilence)
@@ -159,12 +159,12 @@ function updateList(data) {
     document.getElementById(pathTrimmed).addEventListener('mouseout', function () {
       document.getElementById('popupContent').style.display = 'none'
       popupActive = false
-      fetchAndUpdateList()
+      //fetchAndUpdateList()
     })
     document.getElementById(pathTrimmed+"-state").addEventListener('mouseout', function () {
       document.getElementById('popupContentState').style.display = 'none'
       popupActiveState = false
-      fetchAndUpdateList()
+      //fetchAndUpdateList()
     })
     if (!popupActive) {
       document.getElementById(pathTrimmed).addEventListener('mouseover', processMouseOver)
@@ -172,6 +172,11 @@ function updateList(data) {
     if (!popupActiveState) {
       document.getElementById(pathTrimmed+"-state").addEventListener('mouseover', processMouseOverState)
     }
+  })
+  document.getElementById("showAllNotifications-state").addEventListener('mouseover', processMouseOverState)
+  document.getElementById("showAllNotifications-state").addEventListener('mouseout', function () {
+      document.getElementById('popupContentState').style.display = 'none'
+      popupActiveState = false
   })
 }
 
@@ -201,14 +206,24 @@ function processMouseOver(event) {
 }
 
 async function processMouseOverState(event) {
-  maxShown = 8
+  let showAll = false
+  const maxShown = 8
+  const path = event.target.id.substring(0,event.target.id.indexOf('-'))
   popupActiveState = true
-  path = event.target.id.substring(0,event.target.id.indexOf('-'))
-  document.getElementById('popupContentState').innerHTML =
-    'Last Notification:&nbsp;<div style="display:inline; font-size: small; color:#800;">' + path +
-    '</div><hr><div id=zonesState>loading...</div>'
   document.getElementById('popupContentState').style.display = 'block'
-  getJSON(BASE_URL + '/log?' + path + "?" + maxShown).then(data => {
+
+  if( path == "showAllNotifications" ) {
+    showAll = true
+    query = BASE_URL + '/log?' + maxShown * 2
+    document.getElementById('popupContentState').innerHTML =
+      '<div style="display:inline; font-size: small; color:#800;">Most Recent Notifications<hr></div><div id=zonesState>loading...</div>'
+  } else {
+    query = BASE_URL + '/log?' + path + "?" + maxShown
+    document.getElementById('popupContentState').innerHTML =
+      'Last Notification:&nbsp;<div style="display:inline; font-size: small; color:#800;">' + path +
+      '</div><hr><div id=zonesState>loading...</div>'
+  }
+  getJSON(query).then(data => {
       if (data.includes('Cannot GET ')) document.getElementById('zonesState').innerHTML = '---'
       text = JSON.stringify(data)
       text = text.replaceAll('},{', '}<hr>{')
@@ -216,7 +231,8 @@ async function processMouseOverState(event) {
       let html = "<table>"
       for (const item of data) {
         if(typeof item.value === 'number') item.value = item.value.toPrecision(5)
-        html += "<tr><td>State: "+item.state+"</td><td>Value: "+item.value+"</td><td>Since: "+formattedDT(new Date(item.datetime))+"</td></tr>";
+        if(showAll) html += "<tr><td>"+item.path+"</td><td>State: "+item.state+"</td><td>Value: "+item.value+"</td><td>Since: "+formattedDT(new Date(item.datetime))+"</td></tr>";
+        else html += "<tr><td>State: "+item.state+"</td><td>Value: "+item.value+"</td><td>Since: "+formattedDT(new Date(item.datetime))+"</td></tr>";
       }
       html += "</table>"
       document.getElementById('zonesState').innerHTML = html

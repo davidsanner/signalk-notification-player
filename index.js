@@ -1060,15 +1060,25 @@ module.exports = function (app) {
 
 
     router.get('/log', (req, res) => {
-      const path = req._parsedUrl.query.split('?')[0]
-      const numEvents = req._parsedUrl.query.split('?')[1]
-      if (numEvents && !(numEvents > 0)) numEvents = 10 // default to last 10 events
-      const logSnip = JSON.stringify(
-        notificationLog
-          .filter((entry) => entry.path === path)
-          .sort((a, b) => b.datetime - a.datetime)
-          .slice(0, numEvents)
-      )
+      var logSnip
+      if(req._parsedUrl.query === null) {
+        const numEvents = 10
+        logSnip = notificationLog.slice(-numEvents).reverse();
+      } else if (!isNaN(req._parsedUrl.query.split('?')[0])) {
+        const numEvents = req._parsedUrl.query.split('?')[0]
+        logSnip = notificationLog.slice(-numEvents).reverse();
+      } else  {
+        // events from single path only, 2nd parameter can set to number of events
+        const path = req._parsedUrl.query.split('?')[0]
+        const numEvents = req._parsedUrl.query.split('?')[1]
+        if (numEvents && !(numEvents > 0)) numEvents = 10 // default to last 10 events
+        logSnip = JSON.stringify(
+          notificationLog
+            .filter((entry) => entry.path === path)
+            .sort((a, b) => b.datetime - a.datetime)
+            .slice(0, numEvents)
+        )
+      }
       res.set({ 'Content-Type': 'application/json' })
       res.send(logSnip)
     })
