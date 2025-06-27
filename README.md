@@ -62,6 +62,7 @@ curl http://localhost:3000/plugins/signalk-notification-player/list
 List log of notifications (json) (log?path?numberDisplayed)
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/log?navigation.gnss.horizontalDilution?25
+curl http://localhost:3000/plugins/signalk-notification-player/log?20  (show last 20, any path)
 ```
 While playback is disabled, incoming notifications will still be queued and played in order, once re-enabled the latest / current notification for a given path will be processed for playback.
 
