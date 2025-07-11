@@ -3,7 +3,7 @@
 
 This plugin plays user configurable sounds and/or text to speech when a Signal K notification enters emergency/alarm/warn/notice state.
 Custom notifications can also be sent to user configured slack channel.  The paired Webapp displays all known/configured notifications as well as 
-controls for silencing and clearing active notification states.
+controls for silencing and clearing active notification states and displaying recent zone log history. A persistant log is kept for all zone changes, even when not playing audio or state zone method is defined.  Use cases including tracking basic logging of digital switching or misc events like engine state, movement status or node red flags.
 
 
 The playback options for each state (emergency,alarm,warn,notice) can be configure independently with the option to create custom playback rules for a specific path & state.  Custom commands can be initiated before and after a notification plays (eg. pause music, change volume, flash lights).
@@ -106,6 +106,10 @@ Webapps like KIP can be used to silence or resolve active notifications.
 
 ## Release Notes
 
+- version 2.5.5:  
+  - Feature: All state changes get logged even if no sound method except when bouncing in/out of zone.
+  - Refactor main event proccessing/queueing code to support full logging
+  - Fix: look for specific anchor path when matching for anchor value, now using currentRadius
 - version 2.5.1:  
   - Feature: Persistant log of state changes, viewable via WebApp w/ mouse over State column
 - version 2.4.0:  
