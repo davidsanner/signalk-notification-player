@@ -78,8 +78,8 @@ module.exports = function (app) {
     readLogFile(logFile)
 
     //const openapi = require('./openApi.json'); plugin.getOpenApi = () => openapi
-    subscribeToNotifications()
     delay(4000).then(() => {
+      subscribeToNotifications()
       // also startup of SK so wait for things to settle and then check we did't miss any notifications
       findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function (update) {
         // load notificationList
@@ -103,10 +103,11 @@ module.exports = function (app) {
 
   function processNotifications(fullNotification) {
     fullNotification.updates.forEach(function (update) {
-      update.values.forEach(function (notifcation) {
+      update.values.forEach(function (notification) {
         // loop for each notification update
-        nPath = notifcation.path
-        value = notifcation.value
+        let nPath = notification.path
+        let value = notification.value
+        let bounceBlock = false
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
 
@@ -114,96 +115,103 @@ module.exports = function (app) {
           if (typeof notificationList[nPath] != 'undefined')
             notificationList[nPath] = { state: value.state, disabled: notificationList[nPath].disabled }
           else notificationList[nPath] = { state: value.state, disabled: false }
-          if (typeof value.method != 'undefined' && value.method.indexOf('sound') != -1) {
-            let continuous = false
-            let notice = false
-            let noPlay = false
-            let msgServiceAlert = false
-            let playAfter = 0
-            let audioFile = notificationSounds[value.state]
-            let repeatGap = pluginProps.repeatGap
 
-            ppm = pluginProps.mappings // // check for custom notice & configure if found
-            if (
-              pluginProps.mappings &&
-              nPath &&
-              value.state &&
-              (notification = pluginProps.mappings.find((ppm) => ppm.path === nPath && ppm.state === value.state))
-            ) {
-              //app.debug('Found custom notification', notification )
-              if (notification.alarmAudioFile) audioFile = notification.alarmAudioFile
-              if (notification.alarmType == 'continuous') continuous = true
-              else if (notification.alarmType == 'single notice') notice = true
-              if (notification.noPlay == true) noPlay = true
-              if (notification.repeatGap) repeatGap = notification.repeatGap
-              if (notification.msgServiceAlert) msgServiceAlert = true
-              if (notification.playAfter) playAfter = now() + notification.playAfter * 1000
-            } else {
-              if (enableNotificationTypes[value.state] == 'continuous') continuous = true
-              else if (enableNotificationTypes[value.state] == 'single notice') notice = true
+          let continuous = false
+          let notice = false
+          let noPlay = false
+          let msgServiceAlert = false
+          let playAfter = 0
+          let audioFile = notificationSounds[value.state]
+          let repeatGap = pluginProps.repeatGap
+          let ppm = pluginProps.mappings // // check for custom notice & configure if found
+
+          if (
+            pluginProps.mappings &&
+            nPath &&
+            value.state &&
+            (notification = pluginProps.mappings.find((ppm) => ppm.path === nPath && ppm.state === value.state))
+          ) {
+            //app.debug('Found custom notification', notification )
+            if (notification.alarmAudioFile) audioFile = notification.alarmAudioFile
+            if (notification.alarmType == 'continuous') continuous = true
+            else if (notification.alarmType == 'single notice') notice = true
+            if (notification.noPlay == true) noPlay = true
+            if (notification.repeatGap !== undefined) repeatGap = notification.repeatGap
+            if (notification.msgServiceAlert) msgServiceAlert = true
+            if (notification.playAfter) playAfter = now() + notification.playAfter * 1000
+          } else {
+            if (enableNotificationTypes[value.state] == 'continuous') continuous = true
+            else if (enableNotificationTypes[value.state] == 'single notice') notice = true
+          }
+
+          if (update.timestamp) eventTimeStamp = new Date(update.timestamp).getTime()
+          else eventTimeStamp = now()
+          //let eventTimeStamp = update.timestamp ? new Date(update.timestamp).getTime() : now();
+
+
+          if (!alertLog[nPath + '.' + value.state] || // bounce prevention: check alertLog for recent notification of this type
+              alertLog[nPath + '.' + value.state].timestamp + repeatGap * 1000 < eventTimeStamp ||   // true enough time has passed, eg not bouncing
+              value.state == 'emergency' || // never block notifications of type: emergency or alarm 
+              value.state == 'alarm'||
+              notificationLog.findLast((item) => item.path === nPath.substring(nPath.indexOf('.') + 1)).state != value.state && 
+              value.state == 'normal' // always log normal if prev log state was not normal
+          ) bounceBlock = false
+          else bounceBlock = true
+          let duplicate = false
+
+          let args = Object.create(soundEvent)
+          if (notice) args.mode = 'notice'
+          else if (continuous) args.mode = 'continuous'
+          else args.mode = 'none'
+          args.audioFile = audioFile
+          args.path = nPath
+          args.state = value.state
+          args.played = 0
+          args.playAfter = playAfter
+          args.disabled = notificationList[nPath].disabled
+          args.numNotifications = 0
+          if (audioFile && !noPlay) args.numNotifications++
+          else args.audioFile = ''
+          if (value.message) {
+            args.numNotifications++
+            args.message = value.message
+          }
+
+          lastAlert = args.path + '.' + args.state
+          alertLog[args.path + '.' + args.state] = { message: args.message, timestamp: eventTimeStamp }
+          let inQ = alertQueue.has(nPath)
+
+          // Process/play notification if new path entry or if changing existing path's state (eg. alarm to alert to normal) 
+          // or if messages changes && not bouncing/recent (except alarm & emergency)
+          if (
+            (inQ || notice || continuous) &&
+            (!inQ ||
+              !alertQueue.get(nPath).state ||
+              alertQueue.get(nPath).state != value.state ||
+              alertQueue.get(nPath).message != value.message) &&
+              !bounceBlock
+          ) {
+            // Finally add to alertQueue for sound processing
+            if (args.state != 'normal' && typeof value.method != 'undefined' && value.method.indexOf('sound') != -1) { // only Q if sound Method
+              if (args.disabled != true) {
+                alertQueue.set(nPath, args) // active notification state, path not disabled, Q it!
+
+                app.debug(
+                  'ADD2Q:' + args.path.substring(args.path.indexOf('.') + 1),
+                  args.mode,
+                  args.state,
+                  'qSize:' + alertQueue.size
+                )
+
+                processQueue()
+              }
+            } else if (inQ) { // notification path was in Q but no longer has sound Method or state normal
+              alertQueue.delete(nPath)
+              app.debug('RMFQ:', args.path.substring(args.path.indexOf('.') + 1), 'qSize:', alertQueue.size)
             }
-
-            if (update.timestamp) eventTimeStamp = new Date(update.timestamp).getTime()
-            else eventTimeStamp = now()
-            // Has notification type, otherwise delete from Q and only add if new path entry or if changing existing path's state (eg. alarm to alert)
-            // and if messages changes && not bouncing/recent (except alarm & emergency)
-            if (
-              (alertQueue.get(nPath) || notice || continuous) &&
-              (!alertQueue.get(nPath) ||
-                !alertQueue.get(nPath).state ||
-                alertQueue.get(nPath).state != value.state ||
-                alertQueue.get(nPath).message != value.message) &&
-              (!alertLog[nPath + '.' + value.state] ||
-                alertLog[nPath + '.' + value.state].timestamp + repeatGap * 1000 < eventTimeStamp ||
-                value.state == 'emergency' ||
-                value.state == 'alarm')
-            ) {
-              let args = Object.create(soundEvent)
-              args.audioFile = audioFile
-              args.path = nPath
-              args.state = value.state
-              args.played = 0
-              args.playAfter = playAfter
-              args.disabled = notificationList[nPath].disabled
-
-              args.numNotifications = 0
-              if (audioFile && !noPlay) args.numNotifications++
-              else args.audioFile = ''
-              if (value.message) {
-                args.numNotifications++
-                args.message = value.message
-              }
-              if (notice) {
-                args.mode = 'notice'
-              } else if (continuous) {
-                args.mode = 'continuous'
-              }
-
-              if (args.state != 'normal') {
-                if (args.disabled != true) {
-                  alertQueue.set(nPath, args) // active notification state, path not disabled, Q it!
-                  lastAlert = args.path + '.' + args.state
-                  alertLog[args.path + '.' + args.state] = { message: args.message, timestamp: eventTimeStamp }
-
-                  app.debug(
-                    'ADD2Q:' + args.path.substring(args.path.indexOf('.') + 1),
-                    args.mode,
-                    args.state,
-                    'qSize:' + alertQueue.size
-                  )
-
-                  processQueue()
-                }
-              } else if (alertQueue.has(nPath)) {
-                alertQueue.delete(nPath)
-                app.debug('RMFQ:', args.path.substring(args.path.indexOf('.') + 1), 'qSize:', alertQueue.size)
-              }
-
-              logNotification({ path: args.path, state: args.state, mode: args.mode, disabled: args.disabled })
-
-              if (msgServiceAlert && pluginProps.slackWebhookURL != null) {
-                app.debug('Slack send:', args.path, args.message)
-                SlackNotify(pluginProps.slackWebhookURL).send({
+            if (msgServiceAlert && pluginProps.slackWebhookURL) {
+              try {
+                  SlackNotify(pluginProps.slackWebhookURL).send({
                   channel: pluginProps.slackChannel,
                   text: vesselName + ': ' + args.message,
                   fields: {
@@ -211,27 +219,41 @@ module.exports = function (app) {
                     Message: args.message + ' @ ' + new Date(eventTimeStamp).toISOString(),
                     Value: app.getSelfPath(args.path.substring(args.path.indexOf('.') + 1) + '.value')
                   }
-                })
+                });
+                app.debug('Slack notification sent:', args.path);
+              } catch (error) {
+                app.error('Slack notification failed:', error.message);
               }
             }
+          }
+          else if (inQ) {
+            if (typeof value.method != 'undefined' && value.method.indexOf('sound') == -1) {
+              app.debug('RMFQ: no sound method, removing')
+              alertQueue.delete(nPath) // no sound method
+            }
+            else if (!notice && !continuous) {
             // resolved: state's notificationType has no continuous or single notice method, typical back to normal state
-            else if (alertQueue.has(nPath) && !notice && !continuous) {
-              app.debug('resolved: no method, removing')
+              app.debug('RMFQ: no method, removing')
               if (alertQueue.get(nPath).played != true && alertQueue.get(nPath).playAfter < now()) { // unless in playAfter state
                 // try and play at least once but if cleared then only once
                 alertQueue.get(nPath).mode = 'notice'
               } else alertQueue.delete(nPath) // no continuous or single notice method for this state so delete
             }
-          } else if (alertQueue.has(nPath)) {
-            // silenced: no method or sound method value
-            app.debug('silenced: no method or sound method value, removing')
-            if (alertQueue.get(nPath).played != true && alertQueue.get(nPath).playAfter < now()) {
-              // try and play at least once but if cleared then only once, may change thinking on this
-              alertQueue.get(nPath).mode = 'notice'
-            } else alertQueue.delete(nPath)
           }
-          if(value.state == 'normal') { // add normal states
-            logNotification({ path: nPath, state: value.state })
+          else { duplicate = true }
+
+          if (!bounceBlock) { // log
+            if(value.state == 'normal') { // add normal states
+              logNotification({ path: nPath, state: value.state })
+            }
+            else logNotification({ path: args.path, state: args.state, mode: args.mode, disabled: args.disabled })
+          }
+          else if (!duplicate){ 
+            app.debug("Notification blocked:"+nPath, value.state, 'bounceBlock:'+bounceBlock)
+            if (alertQueue.has(nPath)) { // odd case where going from active to blocked state, remove active
+              alertQueue.delete(nPath)
+              app.debug('RMFQ w/ block:', args.path.substring(args.path.indexOf('.') + 1), 'qSize:', alertQueue.size)
+            }
           }
         }
       }) //  end loop for each notification update
@@ -406,11 +428,15 @@ module.exports = function (app) {
     if (!lastEvent || lastEvent.state != args.state) {
       try {
         //process.nextTick(() => {  // weird hack to get updated value, w/o async call gets prev value
-        if (typeof app.getSelfPath(path != 'undefined')) {
-          if( 'navigation.anchor' == path ) // handle anchor watch API
-            arg2Log.value = app.getSelfPath(path).distanceFromBow.value
-          else
-            arg2Log.value = app.getSelfPath(path).value
+        if (typeof app.getSelfPath(path) !== undefined) {
+          if (path == 'navigation.anchor') // anchor watch path hack
+            arg2Log.value = app.getSelfPath(path).currentRadius.value
+          else {
+            if(app.getSelfPath(path) && typeof app.getSelfPath(path).value !== undefined)
+              arg2Log.value = app.getSelfPath(path).value
+            else
+              arg2Log.value = null
+          }
           if(typeof arg2Log.value === 'number' && !Number.isInteger(arg2Log.value)) arg2Log.value = arg2Log.value.toPrecision(7) * 1
         } else arg2Log.value = null
         arg2Log.datetime = now()
@@ -482,11 +508,11 @@ module.exports = function (app) {
         return
       }
       for (const [path, val] of Object.entries(list)) {
-        //if(val.disabled && typeof notificationList[path] != 'undefined') {
+        //if(val.disabled && typeof notificationList[path] !== undefined) {
         if (val.disabled) {
           if (val.disabled) {
             alertQueue.delete(path) // remove event from Q / silence at startup
-            if (typeof notificationList[path] != 'undefined') notificationList[path].disabled = true
+            if (typeof notificationList[path] !== undefined) notificationList[path].disabled = true
             else notificationList[path] = { state: '', disabled: true }
           }
         }
@@ -497,7 +523,7 @@ module.exports = function (app) {
   function readLogFile(logFile) {
     if (fs.existsSync(logFile)) {
       let logString
-      let logArray
+      let logArray = []
       try {
         maintainLog(true) // trim log file if needed
         logString = fs.readFileSync(logFile, 'utf8')
@@ -505,17 +531,18 @@ module.exports = function (app) {
         app.error('Could not read ' + logFile + ' - ' + e)
         return
       }
-
-      try {
-        logArray = JSON.parse('[' + logString + ']') // wrap with []
-      } catch (e) {
-        app.error('Could not parse logfile ' + logFile + e)
+      if(logString) {
         try {
-          fs.renameSync(logFile, logFile + "-bck")
+          logArray = JSON.parse('[' + logString + ']') // wrap with []
         } catch (e) {
-          app.error('Could not move logfile ' + logFile + e)
+          app.error('Could not parse logfile ' + logFile + e)
+          try {
+            fs.renameSync(logFile, logFile + "-bck")
+          } catch (e) {
+            app.error('Could not move logfile ' + logFile + e)
+          }
+          return
         }
-        return
       }
       for (const logEntry of Object.values(logArray)) {
         notificationLog.push(logEntry)
@@ -772,14 +799,14 @@ module.exports = function (app) {
               playAfter: {
                 title: 'Minimum Time Notification Must Remain in Zone Before Notification is Played',
                 description:
-                  'Limit Transient Notifications: Seconds notification/value must remain in this zone state before notifcation is played',
+                  'Limit Transient Notifications: Seconds notification/value must remain in this zone state before notification is played',
                 type: 'number',
                 default: 0
               },
               msgServiceAlert: {
                 type: 'boolean',
                 title: 'Send Notification via Slack',
-                description: 'Send notifcation to Slack channel (if Webhook URL configured above)',
+                description: 'Send notification to Slack channel (if Webhook URL configured above)',
                 default: false
               }
             }
@@ -1120,8 +1147,8 @@ module.exports = function (app) {
       const vlist = {}
       notificationList = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
       for (const path in notificationList) {
-        if (path.startsWith('notifications.navigation.anchor')) {
-          nvalue = app.getSelfPath(path.substring(path.indexOf('.') + 1) + '.distanceFromBow') // anchor watch api path
+        if (path == 'notifications.navigation.anchor') {
+          nvalue = app.getSelfPath(path.substring(path.indexOf('.') + 1) + '.currentRadius') // anchor watch path hack
         } else {
           nvalue = app.getSelfPath(path.substring(path.indexOf('.') + 1)) // strip leading notifiction from typical path
         }
