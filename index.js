@@ -67,7 +67,7 @@ module.exports = function (app) {
     }
     if (pluginProps.mappings)
       pluginProps.mappings.forEach((m) => {
-        if (typeof m.alarmAudioFileCustom != 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom
+        if (typeof m.alarmAudioFileCustom !== 'undefined') m.alarmAudioFile = m.alarmAudioFileCustom
       })
     if (!(vesselName = app.getSelfPath('name'))) vesselName = 'Unnamed'
     if (!pluginProps.playbackControlPrefix) pluginProps.playbackControlPrefix = 'digital.notificationPlayer'
@@ -111,8 +111,8 @@ module.exports = function (app) {
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
 
-        if (value != null && typeof value.state != 'undefined') {
-          if (typeof notificationList[nPath] != 'undefined')
+        if (value != null && typeof value.state !== 'undefined') {
+          if (typeof notificationList[nPath] !== 'undefined')
             notificationList[nPath] = { state: value.state, disabled: notificationList[nPath].disabled }
           else notificationList[nPath] = { state: value.state, disabled: false }
 
@@ -192,7 +192,7 @@ module.exports = function (app) {
               !bounceBlock
           ) {
             // Finally add to alertQueue for sound processing
-            if (args.state != 'normal' && typeof value.method != 'undefined' && value.method.indexOf('sound') != -1) { // only Q if sound Method
+            if (args.state != 'normal' && typeof value.method !== 'undefined' && value.method.indexOf('sound') != -1) { // only Q if sound Method
               if (args.disabled != true) {
                 alertQueue.set(nPath, args) // active notification state, path not disabled, Q it!
 
@@ -227,7 +227,7 @@ module.exports = function (app) {
             }
           }
           else if (inQ) {
-            if (typeof value.method != 'undefined' && value.method.indexOf('sound') == -1) {
+            if (typeof value.method !== 'undefined' && value.method.indexOf('sound') == -1) {
               app.debug('RMFQ: no sound method, removing')
               alertQueue.delete(nPath) // no sound method
             }
@@ -428,11 +428,11 @@ module.exports = function (app) {
     if (!lastEvent || lastEvent.state != args.state) {
       try {
         //process.nextTick(() => {  // weird hack to get updated value, w/o async call gets prev value
-        if (typeof app.getSelfPath(path) !== undefined) {
+        if (typeof app.getSelfPath(path) !== 'undefined') {
           if (path == 'navigation.anchor') // anchor watch path hack
             arg2Log.value = app.getSelfPath(path).currentRadius.value
           else {
-            if(app.getSelfPath(path) && typeof app.getSelfPath(path).value !== undefined)
+            if(app.getSelfPath(path) && typeof app.getSelfPath(path).value !== 'undefined')
               arg2Log.value = app.getSelfPath(path).value
             else
               arg2Log.value = null
@@ -508,11 +508,11 @@ module.exports = function (app) {
         return
       }
       for (const [path, val] of Object.entries(list)) {
-        //if(val.disabled && typeof notificationList[path] !== undefined) {
+        //if(val.disabled && typeof notificationList[path] !== 'undefined') {
         if (val.disabled) {
           if (val.disabled) {
             alertQueue.delete(path) // remove event from Q / silence at startup
-            if (typeof notificationList[path] !== undefined) notificationList[path].disabled = true
+            if (typeof notificationList[path] !== 'undefined') notificationList[path].disabled = true
             else notificationList[path] = { state: '', disabled: true }
           }
         }
@@ -1061,7 +1061,7 @@ module.exports = function (app) {
       res.send('Ok')
       const path = req._parsedUrl.query.split('?')[0]
       //app.debug('disablePath:', path+'='+req._parsedUrl.query.split('?')[1])
-      if (typeof notificationList[path] == 'undefined') return
+      if (typeof notificationList[path] === 'undefined') return
 
       if (req._parsedUrl.query.split('?')[1] == 'true') {
         notificationList[path].disabled = true
