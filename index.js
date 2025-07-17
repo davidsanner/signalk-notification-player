@@ -21,33 +21,33 @@ const say = require('say')
 const SlackNotify = require('slack-notify')
 
 module.exports = function (app) {
-  var plugin = {}
+  let plugin = {}
   plugin.id = 'signalk-notification-player'
   plugin.name = 'Notification Player'
   plugin.description = 'Plugin that plays notification sounds/speech'
 
   const maxDisable = 3600 // max disable all time in seconds
   const playBackTimeOut = 60000 // 60s failsafe override playBack
-  var unsubscribes = []
-  var queueActive = false // keeps track of running the preCommand
-  var playBackActive = false
-  var hasFestival = false
-  var pluginProps
-  var lastAlert = ''
-  var playPID
-  var queueIndex = 0
-  var muteUntil = 0
-  var vesselName
-  var listFile, logFile
-  var alertQueue = new Map()
-  var alertLog = {} // used to keep track of recent alerts to control bouncing in/out of zone
-  var notificationList = {} // notification state, disabled setting saved to disk
-  var notificationLog = [] // long term timestamped log for every notification event
+  let unsubscribes = []
+  let queueActive = false // keeps track of running the preCommand
+  let playBackActive = false
+  let hasFestival = false
+  let pluginProps
+  let playPID
+  let queueIndex = 0
+  let muteUntil = 0
+  let vesselName
+  let listFile, logFile
+  //let lastAlert = ''
+  const alertQueue = new Map()
+  const alertLog = {} // used to keep track of recent alerts to control bouncing in/out of zone
+  const notificationList = {} // notification state, disabled setting saved to disk
+  let notificationLog = [] // long term timestamped log for every notification event
 
   const notificationFiles = ['builtin_alarm.mp3', 'builtin_notice.mp3', 'builtin_sonar.mp3', 'builtin_tritone.mp3']
-  var notificationSounds = { emergency: notificationFiles[0], alarm: notificationFiles[1], warn: notificationFiles[2], alert: notificationFiles[3] }
-  var enableNotificationTypes = { emergency: 'continuous', alarm: 'continuous', warn: 'single notice', alert: 'single notice' }
-  var notificationPrePost = { emergency: true, alarm: true, warn: true, alert: false }
+  const notificationSounds = { emergency: notificationFiles[0], alarm: notificationFiles[1], warn: notificationFiles[2], alert: notificationFiles[3] }
+  const enableNotificationTypes = { emergency: 'continuous', alarm: 'continuous', warn: 'single notice', alert: 'single notice' }
+  const notificationPrePost = { emergency: true, alarm: true, warn: true, alert: false }
   const soundEvent = { path: '', state: '', audioFile: '', message: '', mode: '', played: 0, numNotifications: 0, playAfter: 0, disabled: false }
 
   plugin.start = function (props) {
@@ -105,8 +105,8 @@ module.exports = function (app) {
     fullNotification.updates.forEach(function (update) {
       update.values.forEach(function (notification) {
         // loop for each notification update
-        let nPath = notification.path
-        let value = notification.value
+        const nPath = notification.path
+        const value = notification.value
         let bounceBlock = false
         //if(value.state != 'normal' ) app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
         //app.debug('notification path:', nPath, 'value:', value)   // value.nPath & value.value
@@ -123,7 +123,7 @@ module.exports = function (app) {
           let playAfter = 0
           let audioFile = notificationSounds[value.state]
           let repeatGap = pluginProps.repeatGap
-          let ppm = pluginProps.mappings // // check for custom notice & configure if found
+          //let ppm = pluginProps.mappings // // check for custom notice & configure if found
 
           if (
             pluginProps.mappings &&
@@ -144,6 +144,7 @@ module.exports = function (app) {
             else if (enableNotificationTypes[value.state] == 'single notice') notice = true
           }
 
+          let eventTimeStamp
           if (update.timestamp) eventTimeStamp = new Date(update.timestamp).getTime()
           else eventTimeStamp = now()
           //let eventTimeStamp = update.timestamp ? new Date(update.timestamp).getTime() : now();
@@ -177,7 +178,7 @@ module.exports = function (app) {
             args.message = value.message
           }
 
-          lastAlert = args.path + '.' + args.state
+          //lastAlert = args.path + '.' + args.state
           alertLog[args.path + '.' + args.state] = { message: args.message, timestamp: eventTimeStamp }
           let inQ = alertQueue.has(nPath)
 
@@ -317,8 +318,8 @@ module.exports = function (app) {
           }
         }
       } else if (soundEvent.audioFile) {
-        let command = pluginProps.alarmAudioPlayer
-        soundFile = soundEvent.audioFile
+        const command = pluginProps.alarmAudioPlayer
+        let soundFile = soundEvent.audioFile
         if (soundFile && soundFile.charAt(0) != '/') {
           soundFile = fspath.join(__dirname, 'sounds', soundFile)
         }
@@ -367,7 +368,7 @@ module.exports = function (app) {
         if (queueIndex >= alertQueue.size) {
           queueIndex = 0
         }
-        audioEvent = Array.from(alertQueue)[queueIndex][1]
+        const audioEvent = Array.from(alertQueue)[queueIndex][1]
         //app.debug('AE', audioEvent)
 
           // Q item not playable yet, move to next Q item, if no playable sleep
@@ -421,8 +422,8 @@ module.exports = function (app) {
     }
   }
   function logNotification(args) {
-    path = args.path.substring(args.path.indexOf('.') + 1)
-    arg2Log = { path: path, state: args.state }
+    const path = args.path.substring(args.path.indexOf('.') + 1)
+    const arg2Log = { path: path, state: args.state }
 
     const lastEvent = notificationLog.findLast((item) => item.path === path)
     if (!lastEvent || lastEvent.state != args.state) {
@@ -466,7 +467,7 @@ module.exports = function (app) {
         const maxEntries = 150 // truncate to max entries per path (approx 1M w/ 50 paths)
 
         try {
-          jsonArray = JSON.parse('[' + fs.readFileSync(logFile, 'utf-8') + ']') // wrap in []
+          const jsonArray = JSON.parse('[' + fs.readFileSync(logFile, 'utf-8') + ']') // wrap in []
 
           const lastEntries = jsonArray.filter((item, index, arr) => {
             const indices = arr.map((el, i) => (el.path === item.path ? i : -1)).filter((i) => i !== -1)
@@ -547,7 +548,7 @@ module.exports = function (app) {
       for (const logEntry of Object.values(logArray)) {
         notificationLog.push(logEntry)
       }
-      maxEntries = 50 // Trim notificationLog array down to last 50 entries for each path
+      const maxEntries = 50 // Trim notificationLog array down to last 50 entries for each path
       const lastEntries = notificationLog.filter((item, index, arr) => {
         const indices = arr.map((el, i) => (el.path === item.path ? i : -1)).filter((i) => i !== -1)
         return indices.slice(-maxEntries).includes(index)
@@ -1015,34 +1016,18 @@ module.exports = function (app) {
   }
 */
 
+/*
   function setZoneVal() {
     for (const path in notificationList) {
-      pathTrimmed = path.substring(path.indexOf('.') + 1)
-      z = pathTrimmed + '.meta.zones'
+      const pathTrimmed = path.substring(path.indexOf('.') + 1)
+      const z = pathTrimmed + '.meta.zones'
       app.debug('Zone Path:', z)
       app.getSelfPath(z).forEach(function (zone) {
         console.log('zone values', zone)
       })
-
-      /*
-        const nvalue = app.getSelfPath(qPath)
-        const delta = {
-          updates: [{
-            values: [{
-              path: qPath,
-                value: {
-                  state: nvalue.value.state
-               }
-            }],
-            $source: nvalue.$source,
-          }]
-        }
-        app.handleMessage(plugin.id, delta)
-      }
-    }
-   */
     }
   }
+*/
   //
 
   plugin.registerWithRouter = (router) => {
@@ -1072,7 +1057,7 @@ module.exports = function (app) {
           if (alertQueue.get(path).disabled) alertQueue.get(path).disabled = false
         }
       }
-      let notificationListTrimmed = {}
+      const notificationListTrimmed = {}
       for (const key in notificationList) {
         if (notificationList[key].disabled == true) {
           notificationListTrimmed[key] = { disabled: notificationList[key].disabled }
@@ -1087,8 +1072,8 @@ module.exports = function (app) {
 
 
     router.get('/log', (req, res) => {
+      let logSnip
       // parameters:  none, numEvents OR path, path?numEvents
-      var logSnip
       if(req._parsedUrl.query === null) {
         const numEvents = 10
         logSnip = notificationLog.slice(-numEvents).reverse();
@@ -1097,7 +1082,7 @@ module.exports = function (app) {
         logSnip = notificationLog.slice(-numEvents).reverse();
       } else  {
         const path = req._parsedUrl.query.split('?')[0]
-        const numEvents = req._parsedUrl.query.split('?')[1]
+        let numEvents = req._parsedUrl.query.split('?')[1]
         if (numEvents && !(numEvents > 0)) numEvents = 10 // default to last 10 events
         logSnip = JSON.stringify(
           notificationLog
@@ -1144,16 +1129,17 @@ module.exports = function (app) {
     })
 
     router.get('/list', (req, res) => {
+      let nvalue
       const vlist = {}
-      notificationList = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
-      for (const path in notificationList) {
+      const notificationListLocal = Object.fromEntries(Object.entries(notificationList).sort((a, b) => a[0].localeCompare(b[0])))
+      for (const path in notificationListLocal) {
         if (path == 'notifications.navigation.anchor') {
           nvalue = app.getSelfPath(path.substring(path.indexOf('.') + 1) + '.currentRadius') // anchor watch path hack
         } else {
           nvalue = app.getSelfPath(path.substring(path.indexOf('.') + 1)) // strip leading notifiction from typical path
         }
-        const state = notificationList[path].state
-        const disabled = notificationList[path].disabled
+        const state = notificationListLocal[path].state
+        const disabled = notificationListLocal[path].disabled
         if (nvalue) {
           const pathValues = {
             state: state,
