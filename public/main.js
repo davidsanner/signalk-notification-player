@@ -3,11 +3,11 @@
 //
 const BASE_URL = '/plugins/signalk-notification-player'
 const SELF_URL = '/signalk/v1/api/vessels/self'
-const CONFIG_URL = '/admin/#/serverConfiguration/plugins/signalk-notification-player'
+//const CONFIG_URL = '/admin/#/serverConfiguration/plugins/signalk-notification-player'
 let popupActive = false // keep popup data from reloading when main table reloads
 let popupActiveState = false // keep popup data from reloading when main table reloads
 let vesselName = ''
-let zones = ''
+//let zones = ''
 let listEntries = 0
 let updateInterval = 2
 let updateTimer
@@ -89,7 +89,7 @@ function updateTimeStamp(status) {
 
 function updateList(data) {
   let age
-  statusElement = document.getElementById('overlay')
+  let statusElement = document.getElementById('overlay')
   if (updateDisable == true) {
     listContent.style.opacity = '.5'
     statusElement.style.display = 'flex'
@@ -101,7 +101,7 @@ function updateList(data) {
   }
 
   Object.entries(data).forEach(([path, value]) => {
-    let pathVal, pathUnits
+    let pathVal, pathUnits, row
     if (!(row = document.getElementById('row-' + path))) {
       row = document.createElement('tr')
       row.setAttribute('id', 'row-' + path)
@@ -110,7 +110,7 @@ function updateList(data) {
     if (typeof bgc == 'undefined') bgc = '#BBB'
     const state = value.state
     let bgAge = 'style="color:#666"'
-    pathTrimmed = path.substring(path.indexOf('.') + 1)
+    let pathTrimmed = path.substring(path.indexOf('.') + 1)
     if (typeof value.value !== 'undefined') {
       pathVal = value.value
       pathUnits = value.units
@@ -141,16 +141,16 @@ function updateList(data) {
       pathUnits = ''
       age = '-'
     }
+    let disabledStyle = ''
     if (value.disabled) disabledStyle = 'background-color: #7E3817'
-    else disabledStyle = ''
 
     row.innerHTML = `<td id="${pathTrimmed}" style="${disabledStyle}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td id="${pathTrimmed}-state" bgcolor="${bgc}">${state}</td><td><input id=${path}-disabled type="checkbox"}></td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
     table.appendChild(row)
-    document.getElementById((id = path + '-disabled')).checked = value.disabled
+    document.getElementById((path + '-disabled')).checked = value.disabled
   })
 
   Object.entries(data).forEach(([path, value]) => {
-    pathTrimmed = path.substring(path.indexOf('.') + 1)
+    let pathTrimmed = path.substring(path.indexOf('.') + 1)
     if (document.getElementById(`${path}-resolve`))
       document.getElementById(`${path}-resolve`).addEventListener('click', processResolve)
     if (document.getElementById(`${path}-silence`))
@@ -182,6 +182,7 @@ function updateList(data) {
 
 function processMouseOver(event) {
   popupActive = true
+  let zonePath
   if (event.target.id.includes('navigation.anchor'))
     zonePath = SELF_URL + '/' + event.target.id.replaceAll('.', '/') + '/meta/value/zones'
   // support for anchor api w/ different path?
@@ -207,6 +208,7 @@ function processMouseOver(event) {
 
 async function processMouseOverState(event) {
   let showAll = false
+  let query
   const maxShown = 8
   const path = event.target.id.substring(0,event.target.id.indexOf('-'))
   popupActiveState = true
@@ -225,7 +227,7 @@ async function processMouseOverState(event) {
   }
   getJSON(query).then(data => {
       if (data.includes('Cannot GET ')) document.getElementById('zonesState').innerHTML = '---'
-      text = JSON.stringify(data)
+      let text = JSON.stringify(data)
       text = text.replaceAll('},{', '}<hr>{')
       text = text.replace(/[\[\]]/g, '')
       let html = "<table>"
