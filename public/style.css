@@ -8,6 +8,7 @@ body {
   flex-direction: column;
   margin: 0;
   height: 100%;
+  background-color: #101010;
 }
 
 .update-timer {
@@ -17,11 +18,12 @@ body {
 .controls-div {
   font-size: 10px;
   text-anchor: middle;
+  color: #808080;
 }
 #silenceAll {
   font-size: 16px;
   text-anchor: middle;
-  border-radius: 16px;
+  border-radius: 10px;
   font-weight: 700;
   box-shadow: 5px 5px 9px black;
   background-color: darkgray;
@@ -40,7 +42,8 @@ button {
 }
 
 table {
-  border-collapse: collapse;
+  background-color: dimgray;
+  border-radius: 6px;
 }
 th {
   text-align: center;
@@ -49,17 +52,18 @@ th {
   background-color: #c4c4c4;
 }
 td {
-  font-size: 11px;
-  border: 2px solid #ddd;
-  padding: 2px 10px 2px 10px;
+  font-size: 13px;
+  border: 0px solid #ddd;
+  padding: 1px 5px 1px 5px;
   text-align: left;
   border-radius: 4px;
+  color: WhiteSmoke;
 }
 tr:nth-child(odd) {
-  background-color: #f4f4f4;
+  background-color: #848484;
 }
 tr:nth-child(even) {
-  background-color: #d4d4d4;
+  background-color: #545454;
 }
 
 .popupContainer {

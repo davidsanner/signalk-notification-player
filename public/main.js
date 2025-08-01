@@ -21,7 +21,7 @@ const bgColorList = {
   alarm: '#ff5555',
   warn: 'yellow',
   alert: 'olive',
-  normal: '#b6c6b0',
+  normal: '#768670',
   nominal: '#9bb194'
 }
 const listContent = document.getElementById('list-div')
@@ -30,7 +30,7 @@ listContent.innerHTML = ''
 headerRow.innerHTML =
   '<th style="font-size: large">' +
   vesselName +
-  ' Notifications</th><th>Value</th><th>Age<br></th><th id="showAllNotifications-state">State</th><th>Disable</th><th span=2><button id=silenceAll>Silence All</button></th>'
+  ' Notification</th><th>Value</th><th>Age<br></th><th id="showAllNotifications-state">State</th><th>Disable</th><th span=2><button id=silenceAll>Silence All</button></th>'
 table.appendChild(headerRow)
 listContent.appendChild(table)
 document.getElementById(`silenceAll`).addEventListener('click', processSilence)
@@ -109,7 +109,7 @@ function updateList(data) {
     let bgc = bgColorList[value.state]
     if (typeof bgc == 'undefined') bgc = '#BBB'
     const state = value.state
-    let bgAge = 'style="color:#666"'
+    let bgAge = 'style="color:#DDD"'
     let pathTrimmed = path.substring(path.indexOf('.') + 1)
     if (typeof value.value !== 'undefined') {
       pathVal = value.value
