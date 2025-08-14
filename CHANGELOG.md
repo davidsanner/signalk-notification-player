@@ -2,6 +2,7 @@
   * Feature: All state changes get logged even if no sound method except when bouncing in/out of zone.
   * Refactor main event proccessing/queueing code to support full logging
   * Fix: look for specific anchor path when matching for anchor value, now using currentRadius
+  * Change: switch to dark mode for app w/ black background
 # version 2.5.1:
   * Feature: Persistant log of state changes, viewable via WebApp w/ mouse over State column
 # version 2.4.0:
