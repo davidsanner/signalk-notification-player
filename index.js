@@ -509,13 +509,12 @@ module.exports = function (app) {
         return
       }
       for (const [path, val] of Object.entries(list)) {
-        //if(val.disabled && typeof notificationList[path] !== 'undefined') {
-        if (val.disabled) {
-          if (val.disabled) {
+          //if(val.disabled && typeof notificationList[path] !== 'undefined') {
+          //strip: notifications.navigation.anchor  - one off fix but too risky & api doesn't populate path @ restart
+          if (val.disabled && path != 'notifications.navigation.anchor') { 
             alertQueue.delete(path) // remove event from Q / silence at startup
             if (typeof notificationList[path] !== 'undefined') notificationList[path].disabled = true
             else notificationList[path] = { state: '', disabled: true }
-          }
         }
       }
     }
@@ -875,6 +874,7 @@ module.exports = function (app) {
     if (path) {
       app.debug('Silencing PATH:', path)
       const nvalue = app.getSelfPath(path)
+      if (typeof nvalue === 'undefined') return
       const nmethod = nvalue.value.method.filter((item) => item !== 'sound')
       const delta = {
         updates: [
@@ -1070,6 +1070,41 @@ module.exports = function (app) {
       }
     })
 
+    router.get('/disableLast', (req, res) => {
+      res.send('Ok')
+      let path, npath
+      path = notificationLog.slice(-1).reverse()[0].path
+      npath = 'notifications.'+notificationLog.slice(-1).reverse()[0].path
+      if (typeof notificationList[npath] === 'undefined') return
+      notificationList[npath].disabled = true
+      silenceNotifications(npath) // silence any active notifications
+
+      const notificationListTrimmed = {}
+      for (const key in notificationList) {
+        if (notificationList[key].disabled == true) {
+          notificationListTrimmed[key] = { disabled: notificationList[key].disabled }
+        }
+      }
+      try {
+        fs.writeFileSync(listFile, JSON.stringify(notificationListTrimmed, null, 2))
+      } catch (e) {
+        app.error('Could not write ' + listFile + ' - ' + e)
+      }
+
+      if (process.platform === 'linux' && !hasFestival) {
+        app.debug('skipping saying:' + "Disabling Notifications for " + path)
+      } else {
+        app.debug('saying:' + "Disabling Notifications for " + path)
+        try {
+          say.speak("Disabling Notifications for " + path, null, null, (err) => {
+          })
+        } catch (error) {
+          app.error('ERROR:' + error)
+        }
+      }
+
+
+    })
 
     router.get('/log', (req, res) => {
       let logSnip
@@ -1161,27 +1196,7 @@ module.exports = function (app) {
       })
       res.send('szv ok')
     })
-    /*
-    router.get('/ignoreLast', (req, res) => {
-      if(!lastAlert) { res.send('No alerts to mute.') ; return }
-      var muteTime = parseInt(req._parsedUrl.query)
-      if ( isNaN(muteTime) ) { muteTime = 600 }   // default 600 seconds
-      if (muteTime > maxDisable) {  // max 1hr
-        muteTime = maxDisable
-        res.send('Muting '+lastAlert+ ' playback for '+muteTime+' seconds, maxmium allowed.')
-      } else {
-        res.send('Muting '+lastAlert+ ' playback for '+muteTime+' seconds')
-      }
-      if( laVal = alertLog[lastAlert] ) {
-        laVal.timestamp = now() + ( muteTime * 1000 )
-        alertLog[lastAlert] = laVal   // set lastAlert time in the future to silence it until then
-        alertQueue.delete(lastAlert.substr(0, lastAlert.lastIndexOf('.')))   // clear active Q entry / any type
-      }
-      app.debug('Muting PB for', lastAlert, 'next', muteTime, 'seconds')
-      //for (type in enableNotificationTypes) { app.debug(type) }
-      //app.debug('alertLog:', alertLog) ; //app.debug('alertQueue:', alertQueue)
-    })
-*/
+
   } // end registerWithRouter()
 
   return plugin

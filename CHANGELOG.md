@@ -1,3 +1,6 @@
+# version 2.6.0:
+  * Feature: API - disableLast - to help with recent bouncing / nuisance notifications
+  * Change: remove anchor disable state at startup, too risky as anchor api doesn't publish path/state at startup
 # version 2.5.5:
   * Feature: All state changes get logged even if no sound method except when bouncing in/out of zone.
   * Refactor main event proccessing/queueing code to support full logging
