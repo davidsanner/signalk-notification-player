@@ -55,6 +55,10 @@ Custom disable playback for specific path (args: path & true/false )
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/disablePath?electrical.batteries.House.voltage?true
 ```
+Custom disable playback for last alert path (map to a keystroke to quickly silence & disable)
+```
+curl http://localhost:3000/plugins/signalk-notification-player/disableLast
+```
 List all known notifcation states & associated value (json)
 ```
 curl http://localhost:3000/plugins/signalk-notification-player/list
