@@ -1,4 +1,4 @@
-# Signal K Notification Player with Webapp
+# <img src="public/icon.png" width="72" height="72" style="vertical-align: middle; margin-right: 20px;"> Signal K Notification Player with Webapp
 
 This Signal K plugin plays user-configurable sounds and/or text-to-speech when a Signal K notification enters an emergency, alarm, warn, or notice state. Custom notifications can also be sent to a user-configured Slack channel.
 
