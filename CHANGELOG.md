@@ -1,3 +1,5 @@
+# version 2.6.1:
+  * Package version update
 # version 2.6.0:
   * Feature: API - disableLast - to help with recent bouncing / nuisance notifications
   * Change: remove anchor disable state at startup, too risky as anchor api doesn't publish path/state at startup
