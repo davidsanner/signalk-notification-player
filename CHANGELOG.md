@@ -1,3 +1,5 @@
+# version 2.6.2:
+  * React ready readme
 # version 2.6.1:
   * Package version update
 # version 2.6.0:
