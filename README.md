@@ -1,4 +1,4 @@
-# <img src="public/icon.png" width="72" height="72" style="vertical-align: middle; margin-right: 20px;"> Signal K Notification Player with Webapp
+# ![Signal K Notification Player Logo](./public/icon.png) Signal K Notification Player with Webapp
 
 This Signal K plugin plays user-configurable sounds and/or text-to-speech when a Signal K notification enters an emergency, alarm, warn, or notice state. Custom notifications can also be sent to a user-configured Slack channel.
 
@@ -21,23 +21,22 @@ A persistent log is kept for all zone changes, even when audio is not playing or
 - An anchor alarm could play continuously, alternating a unique attention-grabbing sound with "Anchor Alarm - Emergency" text-to-speech.
 
 ### Initial configuration of each notification state 
-<img width="608" alt="Alert State Configuration" src="https://github.com/user-attachments/assets/bfaab30b-7d2d-4430-b093-f8a626d14a59" />
-
+![Alert State Configuration](https://github.com/user-attachments/assets/bfaab30b-7d2d-4430-b093-f8a626d14a59)
 
 Customized alarm for specific path & notification state
-<img width="600" alt="Custom Path Configuration" src="https://github.com/user-attachments/assets/3232464b-4594-4447-b201-481dc60d3967" />
+![Custom Path Configuration](https://github.com/user-attachments/assets/3232464b-4594-4447-b201-481dc60d3967)
 
 ## WebApp - State Viewer and Control
 
 Companion webapp for viewing all notifications states and their corresponding values.  This page can be easily embedded into Kip for quick state view and playback control/silencing  
-<img width="706" alt="snkp-zone2" src="https://github.com/user-attachments/assets/2c923776-53c9-47e4-bc8b-4ef64cc31bcc" />
+![snkp-zone2](https://github.com/user-attachments/assets/2c923776-53c9-47e4-bc8b-4ef64cc31bcc)
 
 
 Mouse over any path to view its notifcation zones and type  
-<img width="623" alt="sknp-zones" src="https://github.com/user-attachments/assets/16cebb46-a2d7-4827-822a-772b28e7d32a" />
+![sknp-zones](https://github.com/user-attachments/assets/16cebb46-a2d7-4827-822a-772b28e7d32a)
 
 Mouse over the State column of any path (eg. normal) to view log of past notifications.
-<img width="365" alt="notification-player-log" src="https://github.com/user-attachments/assets/68b314ec-77ca-4cb4-8ee6-63403d036ac5" />
+![notification-player-log](https://github.com/user-attachments/assets/68b314ec-77ca-4cb4-8ee6-63403d036ac5)
 
 ## API - Control of Playback & Active Notifications
 
