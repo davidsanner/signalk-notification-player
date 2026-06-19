@@ -107,4 +107,4 @@ Silence, resolve, and disable functions are available via these paths, which can
 A Signal K path can have one or more zones associated with it. Zones are specified in a path's metadata, which defines thresholds and associated notification states. This plugin monitors these zones and triggers audio notifications accordingly.
 
 For more details on Signal K notifications and zones, refer to the [Signal K documentation](https://signalk.org/specification/1.7/doc/notifications.html).
-
+Requirements: Signal K server v2.2.0+

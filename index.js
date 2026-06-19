@@ -171,6 +171,7 @@ module.exports = function (app) {
           args.playAfter = playAfter
           args.disabled = notificationList[nPath].disabled
           args.numNotifications = 0
+          args.id = value.id
           if (audioFile && !noPlay) args.numNotifications++
           else args.audioFile = ''
           if (value.message) {
@@ -872,91 +873,33 @@ module.exports = function (app) {
 
   function silenceNotifications(path) {
     if (path) {
-      app.debug('Silencing PATH:', path)
       const nvalue = app.getSelfPath(path)
       if (typeof nvalue === 'undefined') return
-      const nmethod = nvalue.value.method.filter((item) => item !== 'sound')
-      const delta = {
-        updates: [
-          {
-            values: [
-              {
-                path: path,
-                value: {
-                  state: nvalue.value.state,
-                  method: nmethod,
-                  message: nvalue.value.message
-                }
-              }
-            ],
-            $source: nvalue.$source
-          }
-        ]
-      }
-      app.handleMessage(plugin.id, delta)
+      const id = nvalue.value.id
+      app.debug('Silencing PATH,ID:', path, id)
+      const notification = app.notifications.getId(id);
+      const { value: { status: { canClear, canSilence, canAcknowledge } = {} } = {} } = notification || {};
+
+      if (canSilence) { app.notifications.silence(id); }
+
     } else {
-      //  Perhaps traverse all "notifications" instead of alertQueue????
-      findObjectsEndingWith(app.getSelfPath('notifications'), 'value').forEach(function (update) {
-        // load notificationList
-        path = 'notifications.' + update.path
-        const nvalue = app.getSelfPath(path)
-        if (nvalue?.value?.state !== undefined && nvalue.value.state != 'normal') {
-          app.debug('Silencing PATH:', path)
-          const nmethod = nvalue.value.method.filter((item) => item !== 'sound')
-          const delta = {
-            updates: [
-              {
-                values: [
-                  {
-                    path: path,
-                    value: {
-                      state: nvalue.value.state,
-                      method: nmethod,
-                      message: nvalue.value.message
-                    }
-                  }
-                ],
-                $source: nvalue.$source
-              }
-            ]
-          }
-          app.handleMessage(plugin.id, delta)
-        }
-      })
+      app.notifications.silenceAll()
     }
   }
 
   function resolveNotifications(path) {
-    app.debug('Resolve Notifcations', path)
-    Object.entries(alertLog).forEach(([key, value]) => {
-      // check log for any alert played including ones silenced (currently not in alertQueue)
-      key = key.substring(0, key.lastIndexOf('.'))
-      if (!path || key == path) {
-        const nvalue = app.getSelfPath(key)
-        if (nvalue.value.state != 'normal' && nvalue.value.state != 'nominal') {
-          // only clear -> set-to-normal elevated notification states
-          //app.debug('Resolve Clearing:', key)
-          const delta = {
-            updates: [
-              {
-                values: [
-                  {
-                    path: key,
-                    value: {
-                      state: 'normal',
-                      method: nvalue.value.method,
-                      message: nvalue.value.message
-                    }
-                  }
-                ],
-                $source: nvalue.$source
-              }
-            ]
-          }
-          app.handleMessage(plugin.id, delta)
-        }
-      }
-    })
+    const nvalue = app.getSelfPath(path)
+    if (typeof nvalue === 'undefined') return
+    const id = nvalue.value.id
+    app.debug('Acknowledging PATH,ID:', path, id)
+
+    const notification = app.notifications.getId(id);
+    const { value: { status: { silenced, acknowledged } = {} } = {} } = notification || {};
+    const { value: { status: { canClear, canSilence, canAcknowledge } = {} } = {} } = notification || {};
+
+    if (canSilence && !silenced) { app.notifications.silence(id); }
+    if (canClear) { app.notifications.clear(id); }
+    if (canAcknowledge && !acknowledged) { app.notifications.acknowledge(id); }
   }
 
   ////
