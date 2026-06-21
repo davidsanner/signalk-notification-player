@@ -144,7 +144,7 @@ function updateList(data) {
     let disabledStyle = ''
     if (value.disabled) disabledStyle = 'background-color: #7E3817'
 
-    row.innerHTML = `<td id="${pathTrimmed}" style="${disabledStyle}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td id="${pathTrimmed}-state" bgcolor="${bgc}">${state}</td><td><input id=${path}-disabled type="checkbox"}></td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Resolve</button></td>`
+    row.innerHTML = `<td id="${pathTrimmed}" style="${disabledStyle}">${pathTrimmed}</td><td>${pathVal} ${pathUnits}</td><td ${bgAge}>${age}</td><td id="${pathTrimmed}-state" bgcolor="${bgc}">${state}</td><td><input id=${path}-disabled type="checkbox"}></td><td><button id="${path}-silence">Silence</button>&nbsp;&nbsp;<button id="${path}-resolve">Acknowledge</button></td>`
     table.appendChild(row)
     document.getElementById((path + '-disabled')).checked = value.disabled
   })

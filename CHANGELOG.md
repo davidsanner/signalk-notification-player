@@ -1,3 +1,5 @@
+# version 2.7.0-beta.1:
+  * Feature: Integration w/ Notification API-2 (requires SK 2.28.0+)
 # version 2.6.2:
   * React ready readme
 # version 2.6.1:

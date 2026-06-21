@@ -10,15 +10,15 @@ A persistent log is kept for all zone changes, even when audio is not playing or
 
 - **Playback Options**: Independently configure playback for each state (emergency, alarm, warn, notice). Create custom playback rules for specific paths and states.
 - **Custom Commands**: Initiate commands before and after a notification plays (e.g., pause music, change volume, flash lights).
-- **Repeat Behavior**: Configure a state's notification playback to repeat continuously (e.g., emergency) or play once (e.g., notice).
+- **Auto Silence**: Default playback repeats continuously (e.g., emergency) w/ optional single notice (e.g., notice) then auto silenced.
 - **Queuing**: All notifications are queued in order. Sound plays first, followed by message/speech if available, repeating as configured.
-- **Stopping Playback**: Continuous playback stops when a notification's state returns to 'normal' or 'sound' is removed from its method (muted/silenced).
+- **Stopping Playback**: Continuous playback stops when a notification's state returns to 'normal' or 'sound' is removed from its method (muted/silenced) or silenced via Notification API2
 
 **Example Usage**:
-- A zone for elevated coolant or alternator temperature could trigger a single play/speech event.
-- An overheat zone would send continuous output/alarm.
-- Similar setups could apply to depth or battery SOC.
-- An anchor alarm could play continuously, alternating a unique attention-grabbing sound with "Anchor Alarm - Emergency" text-to-speech.
+- A zone for elevated coolant or alternator temperature could trigger a single play/speech event and then be auto silenced.
+- An overheat zone would send continuous output/alarm (Note: emergency state can not be silenced, see: notification API 2).
+- Similar setups could apply to depth or battery SOC. Notifications still have to be acknowledge manually.
+- An anchor alarm would play continuously, alternating a unique attention-grabbing sound with "Anchor Alarm - Emergency" text-to-speech.
 
 ### Initial configuration of each notification state 
 ![Alert State Configuration](https://github.com/user-attachments/assets/bfaab30b-7d2d-4430-b093-f8a626d14a59)

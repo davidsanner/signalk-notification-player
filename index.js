@@ -401,6 +401,7 @@ module.exports = function (app) {
           if (audioEvent.mode != 'continuous') {
             // single play so delete
             alertQueue.delete(audioEvent.path)
+            silenceNotifications(audioEvent.path)
           } else {
             // continuous type, so reset counter
             audioEvent.played = 0
@@ -880,26 +881,25 @@ module.exports = function (app) {
       const notification = app.notifications.getId(id);
       const { value: { status: { canClear, canSilence, canAcknowledge } = {} } = {} } = notification || {};
 
-      if (canSilence) { app.notifications.silence(id); }
+      if (canSilence && nvalue.value.state != 'emergency') { app.notifications.silence(id); }
 
     } else {
       app.notifications.silenceAll()
     }
   }
 
-  function resolveNotifications(path) {
+  function resolveNotifications(path) {    // aka: acknowledge
     const nvalue = app.getSelfPath(path)
     if (typeof nvalue === 'undefined') return
     const id = nvalue.value.id
     app.debug('Acknowledging PATH,ID:', path, id)
 
     const notification = app.notifications.getId(id);
-    const { value: { status: { silenced, acknowledged } = {} } = {} } = notification || {};
-    const { value: { status: { canClear, canSilence, canAcknowledge } = {} } = {} } = notification || {};
+    const { value: { status: { silenced, acknowledged, canClear, canSilence, canAcknowledge } = {} } = {} } = notification || {};
 
-    if (canSilence && !silenced) { app.notifications.silence(id); }
-    if (canClear) { app.notifications.clear(id); }
-    if (canAcknowledge && !acknowledged) { app.notifications.acknowledge(id); }
+    if (canAcknowledge && !acknowledged) { app.notifications.acknowledge(id) }
+    if (canSilence && !silenced && nvalue.value.state != 'emergency') { app.notifications.silence(id) }
+    //if (canClear) { app.notifications.clear(id) }
   }
 
   ////
