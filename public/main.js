@@ -25,17 +25,20 @@ const bgColorList = {
   nominal: '#9bb194'
 }
 const listContent = document.getElementById('list-div')
+
+function buildTableHeader() {
 listContent.innerHTML = ''
 
 headerRow.innerHTML =
   '<th style="font-size: large">' +
   vesselName +
-  ' Notification</th><th>Value</th><th>Age<br></th><th id="showAllNotifications-state">State</th><th>Disable</th><th span=2><button id=silenceAll>Silence All</button></th>'
+  ' Zone Path</th><th>Value</th><th>Age<br></th><th id="showAllNotifications-state">State</th><th>Disable</th><th span=2><button id=silenceAll>Silence All</button></th>'
 table.appendChild(headerRow)
 listContent.appendChild(table)
 document.getElementById(`silenceAll`).addEventListener('click', processSilence)
 document.getElementById('playbackDisabled').addEventListener('click', processDisable)
 document.getElementById('playbackDisabled').checked = updateDisable
+}
 
 async function getJSON(endpoint) {
   try {
@@ -296,13 +299,13 @@ async function fetchStatus() {
 }
 
 function processResolve(event) {
-  processNotification(BASE_URL + '/resolve?' + event.target.id.split('-')[0])
+  processNotification(BASE_URL + '/resolve?' + event.target.id.slice(0, event.target.id.lastIndexOf('-')))
   fetchAndUpdateList()
 }
 
 function processSilence(event) {
   if (event.target.id == 'silenceAll') processNotification(BASE_URL + '/silence')
-  else processNotification(BASE_URL + '/silence?' + event.target.id.split('-')[0])
+  else processNotification(BASE_URL + '/silence?' + event.target.id.slice(0, event.target.id.lastIndexOf('-')))
 }
 
 function processDisable(event) {
@@ -334,7 +337,14 @@ function startTimer() {
 }
 
 // start up
-fetchStatus()
-fetchVesselName()
-fetchAndUpdateList()
-startTimer()
+async function init() {
+  await fetchStatus()
+  await fetchVesselName()
+
+  buildTableHeader()
+
+  await fetchAndUpdateList()
+  startTimer()
+}
+
+init()
