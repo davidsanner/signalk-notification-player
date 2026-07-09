@@ -105,6 +105,11 @@ Silence, resolve, and disable functions are available via these paths, which can
 ## Background
 
 A Signal K path can have one or more zones associated with it. Zones are specified in a path's metadata, which defines thresholds and associated notification states. This plugin monitors these zones and triggers audio notifications accordingly.
+\
+For more details on Signal K notifications and zones, refer to the [Signal K documentation](https://demo.signalk.org/documentation/Developing/REST_APIs/Notifications_API.html).
 
-For more details on Signal K notifications and zones, refer to the [Signal K documentation](https://signalk.org/specification/1.7/doc/notifications.html).
-Requirements: Signal K server v2.2.0+
+SK Notifications APIv2: When a custom path or entire notification type (e.g., notice) is configured for 'single notice' the notification will be automatically silenced after a single playback.  The SK API does not allow silencing emergencies but can allow for acknowledging them which removes their sound & visual attributes.
+
+WebApp: shows current values and states of paths with configured zones only.  It also logs and displays their state change history. Notifications associated with these paths/zones can silenced or acknowledged here.
+
+Requirements: Signal K server 2.28.0+
