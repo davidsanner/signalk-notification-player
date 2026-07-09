@@ -24,7 +24,7 @@ const mockApp = {
           'anchor': {
             'value': {
               'state': 'alarm',
-              'message': 'Anchor Drag Alarm (V2 Context)',
+              'message': 'Testing, Anchor Drag Alarm (V2 Context)',
               'method': ['sound', 'visual'],
               'timestamp': new Date().toISOString()
             }
@@ -106,7 +106,7 @@ setTimeout(() => {
         path: 'notifications.navigation.anchor',
         value: {
           state: 'alarm',
-          message: 'Depth critical! Dragging anchor!',
+          message: 'Testing, Depth critical! Dragging anchor!',
           method: ['sound', 'visual']
         }
       }]
