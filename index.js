@@ -113,8 +113,8 @@ module.exports = function (app) {
 
         if (value != null && typeof value.state !== 'undefined') {
           if (typeof notificationList[nPath] !== 'undefined')
-            notificationList[nPath] = { state: value.state, disabled: notificationList[nPath].disabled }
-          else notificationList[nPath] = { state: value.state, disabled: false }
+            notificationList[nPath] = { state: value.state, disabled: notificationList[nPath].disabled, id: value.id }
+          else notificationList[nPath] = { state: value.state, disabled: false, id: value.id }
 
           let continuous = false
           let notice = false
@@ -206,6 +206,8 @@ module.exports = function (app) {
                 )
 
                 processQueue()
+              } else {
+                 // API call to silence system wide?
               }
             } else if (inQ) { // notification path was in Q but no longer has sound Method or state normal
               alertQueue.delete(nPath)
@@ -876,8 +878,8 @@ module.exports = function (app) {
     if (path) {
       const nvalue = app.getSelfPath(path)
       if (typeof nvalue === 'undefined') return
-      const id = nvalue.value.id
-      app.debug('Silencing PATH,ID:', path, id)
+      const id = notificationList[path].id
+      app.debug('Silencing:', path, id)
       const notification = app.notifications.getId(id);
       const { value: { status: { canClear, canSilence, canAcknowledge } = {} } = {} } = notification || {};
 
@@ -891,14 +893,14 @@ module.exports = function (app) {
   function resolveNotifications(path) {    // aka: acknowledge
     const nvalue = app.getSelfPath(path)
     if (typeof nvalue === 'undefined') return
-    const id = nvalue.value.id
-    app.debug('Acknowledging PATH,ID:', path, id)
+    const id = notificationList[path].id
 
     const notification = app.notifications.getId(id);
     const { value: { status: { silenced, acknowledged, canClear, canSilence, canAcknowledge } = {} } = {} } = notification || {};
+    app.debug('Acknowledging PATH,ID:', path, id, silenced, acknowledged)
 
     if (canAcknowledge && !acknowledged) { app.notifications.acknowledge(id) }
-    if (canSilence && !silenced && nvalue.value.state != 'emergency') { app.notifications.silence(id) }
+    //else if (canSilence && !silenced && nvalue.value.state != 'emergency') { app.notifications.silence(id) }
     //if (canClear) { app.notifications.clear(id) }
   }
 
@@ -1118,15 +1120,32 @@ module.exports = function (app) {
         }
         const state = notificationListLocal[path].state
         const disabled = notificationListLocal[path].disabled
+        const id = notificationListLocal[path].id
         if (nvalue) {
           const pathValues = {
             state: state,
             disabled: disabled,
+            id: id,
             value: nvalue.value,
             units: nvalue.meta.units,
             timestamp: nvalue.timestamp
           }
           vlist[path] = pathValues
+        }
+        else {
+          nvalue = app.getSelfPath(path)
+          const id = nvalue?.value?.id
+          if(id) {
+            const timestamp = nvalue?.value?.createdAt
+            app.debug("PATH: ", path, "NVal:", nvalue)
+            const pathValues = {
+              state: state,
+              id: id,
+              value: '',
+              timestamp: timestamp
+            }
+            vlist[path] = pathValues
+          }
         }
       }
       res.send(vlist)
