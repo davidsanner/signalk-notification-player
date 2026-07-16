@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 David Sanner
+ * Copyright 2024-2026 David Sanner
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -330,7 +330,7 @@ module.exports = function (app) {
         if (fs.existsSync(soundFile)) {
           let args = [soundFile]
           if (pluginProps.alarmAudioPlayerArguments && pluginProps.alarmAudioPlayerArguments.length > 0) {
-            args = [...pluginProps.alarmAudioPlayerArguments.split(' '), ...args]
+            args = [...pluginProps.alarmAudioPlayerArguments.trim().split(/\s+/), ...args]
           }
           app.debug('playing:' + soundEvent.audioFile, 'mode:' + soundEvent.mode, 'played:' + soundEvent.played)
 
