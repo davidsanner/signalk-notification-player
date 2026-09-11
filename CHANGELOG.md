@@ -1,3 +1,6 @@
+# version 3.0.0:
+  * Feature: Audio playback in WebApp on remote devices, works with or w/o SK system speaker
+  * Updated WebApp unit display (based on SK pref setting), updates now event driven for faster response, lower overhead.
 # version 2.7.0:
   * Feature: Integration w/ Notification API-2 (requires SK 2.28.0+)
 # version 2.6.2:

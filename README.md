@@ -2,7 +2,7 @@
 
 This Signal K plugin plays user-configurable sounds and/or text-to-speech when a Signal K notification enters an emergency, alarm, warn, or notice state. Custom notifications can also be sent to a user-configured Slack channel.
 
-The paired webapp displays all known and configured notifications, along with controls for silencing and clearing active notification states. It also shows recent zone log history.
+The paired WebApp displays all known and configured notifications, along with controls for silencing and clearing active notification states. It also shows recent zone log history. Version 3+ supports optional audio playback on remote devices.
 
 A persistent log is kept for all zone changes, even when audio is not playing or when no state zone method is defined. Use cases include basic logging of digital switching or miscellaneous events like engine state, movement status, or Node-RED flags.
 
@@ -13,6 +13,7 @@ A persistent log is kept for all zone changes, even when audio is not playing or
 - **Auto Silence**: Default playback repeats continuously (e.g., emergency) w/ optional single notice (e.g., notice) then auto silenced.
 - **Queuing**: All notifications are queued in order. Sound plays first, followed by message/speech if available, repeating as configured.
 - **Stopping Playback**: Continuous playback stops when a notification's state returns to 'normal' or 'sound' is removed from its method (muted/silenced) or silenced via Notification API2
+- **Browser Playback**: Optional playback on remote browser device (eg. phone/tablet), SK speaker no longer required.
 
 **Example Usage**:
 - A zone for elevated coolant or alternator temperature could trigger a single play/speech event and then be auto silenced.
