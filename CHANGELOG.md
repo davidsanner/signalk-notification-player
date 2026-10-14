@@ -1,6 +1,9 @@
 # version 3.0.0:
   * Feature: Audio playback in WebApp on remote devices, works with or w/o SK system speaker
-  * Updated WebApp unit display (based on SK pref setting), updates now event driven for faster response, lower overhead.
+  * Change: WebApp unit display (based on SK pref setting), updates now event driven for faster response, lower overhead.
+  * Feature: State now indicates if zone was recently elevated: 0–1hr black/bold, 1–6hr darkgray/bold, 6–12hr medium gray, >12hr default appearance
+  * Change: 10s timeout out sound playback
+  * Feature: WebApp - Direct link to edit each path/zone values (black dot just before path)
 # version 2.7.0:
   * Feature: Integration w/ Notification API-2 (requires SK 2.28.0+)
 # version 2.6.2:
