@@ -1,6 +1,6 @@
 {
   "name": "signalk-notification-player",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Customizable audio and text to speech playback of Signal K notifications w/ companion Webapp",
   "main": "index.js",
   "scripts": {

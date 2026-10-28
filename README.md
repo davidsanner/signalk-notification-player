@@ -42,6 +42,10 @@ Mouse over the State column of any path (eg. normal) to view log of past notific
 ## API - Control of Playback & Active Notifications
 
 Active notifications can be silenced (sound removed from method) or resolved (state set to normal) via simple GET requests to the following URLs.
+(Depending on SK configuration authentication may be required.  eg.  curl -H "Cookie: JAUTHENTICATION=..." )   signalk-generate-token seems to be influx w/ latest SK.  Here's a quick example for token generation (paths may vary): 
+```
+node -p "require('/usr/lib/node_modules/signalk-server/node_modules/jsonwebtoken').sign({id:'$USER'},require('fs').readFileSync('$HOME/.signalk/security-secret.key','utf8').trim())"
+```
 
 - **Silence all active playback** (clears sound notification method):
   ```
@@ -88,7 +92,7 @@ While playback is disabled, incoming notifications will still be queued and play
 
 **Example using authentication** (with user `pi`):
 ```
-curl -H 'Cookie: JAUTHENTICATION='$(signalk-generate-token -u pi -e 1y -s ~pi/.signalk/security.json) http://localhost:3000/plugins/signalk-notification-player/silence
+curl -H "Cookie: JAUTHENTICATION=$YOUR_AUTH_TOKEN" http://localhost:3000/plugins/signalk-notification-player/silence
 ```
 
 **Signal K Paths for Control**:

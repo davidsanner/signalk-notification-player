@@ -1,3 +1,5 @@
+# version 3.0.1:
+  * Update readme for token generation changes
 # version 3.0.0:
   * Feature: Audio playback in WebApp on remote devices, works with or w/o SK system speaker
   * Change: WebApp unit display (based on SK pref setting), updates now event driven for faster response, lower overhead.
